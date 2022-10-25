@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="content">
+
+	<h1 class="title is-1 has-text-centered"> <a href={{college['school.school_url']}} target="_blank" rel="noopener noreferrer"> <u> {{college['school.name']}} </u> </a> </h1>
+
+
+	<div class="is-flex is-justify-content-center">
+		<div class="icon-text">
+			<span class="icon is-large">
+				<i class="fa-solid fa-school fa-2x"></i>
+			</span>
+			<span> <h1 class="title is-2"> Overview </h1> </span>
+		</div>
+	</div>
+
+	<h2 class="subtitle has-text-grey-darker is-4">
+	<ul>
+		<li> Location: <b> {{college['school.city']}}, {{college['school.state']}} </b> </li>
+		{% for col in overview %}
+			{% if col in college['ColsUsed'] %}
+				{% if col not in specPref %}
+					<li>{{fieldsDict[col]}}: <b> {{college[col]}} </b> </li>
+				{% else %}
+					<li> {{fieldsDict[col]}} </li>
+				{% endif %}
+			{% endif %}
+		{% endfor %}
+	</ul>
+	</h2>
+
+
+
+	<div class="is-flex is-justify-content-center">
+		<div class="icon-text">
+			<span class="icon is-large">
+				<i class="fa-solid fa-graduation-cap fa-2x"></i>
+			</span>
+			<span> <h1 class="title is-2"> Academics </h1> </span>
+		</div>
+	</div>
+
+	<h2 class="subtitle has-text-grey-darker is-4">
+	<ul>
+		{% for col in academics %}
+			{% if col in college['ColsUsed'] %}
+				<li>{{fieldsDict[col]}}: <b> {{college[col]}} </b></li>
+			{% endif %}
+		{% endfor %}
+	</ul>
+	</h2>
+
+
+
+	<div class="is-flex is-justify-content-center">
+		<div class="icon-text">
+			<span class="icon is-large">
+				<i class="fa-solid fa-coins fa-2x"></i>
+			</span>
+			<span> <h1 class="title is-2"> Finances </h1> </span>
+		</div>
+	</div>
+
+	<h2 class="subtitle has-text-grey-darker is-4">
+	<ul>
+		{% for col in finance %}
+			{% if col in college['ColsUsed'] %}
+				<li>{{fieldsDict[col]}}: <b> ${{college[col]}} </b></li>
+			{% endif %}
+		{% endfor %}
+		{% if 'school.price_calculator_url' in college['ColsUsed'] %}
+			<li> <a href={{college['school.price_calculator_url']}} target="_blank" rel="noopener noreferrer"> Link to the college's net price calculator </a></li>
+		{% endif %}
+	</ul>
+	</h2>
+
+</div>
+
+{% endblock %}

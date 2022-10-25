@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+{% if df.shape[0]>0 %}
+
+	<h1 class="title is-1 has-text-centered">Here are your top matches! Click on each college to find out more.</h1>
+
+
+	{% for index,college in df.iterrows() %}
+		<h1 class="title is-2">{{index+1}}. <a href={{url_for('main.college',college_id=index)}}> {{college['school.name']}} </a> </h1>
+		<h2 class="subtitle has-text-grey-darker is-3">{{college['Match']}}% Match</h2>
+
+	{% endfor %}
+
+{% else %}
+	<h1 class="title is-1 has-text-centered">There are no colleges that match your preferences. Please go back and choose different criteria.</h1>
+{% endif %}
+{% endblock %}

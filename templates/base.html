@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>College Picker</title>
+    <!-- Old version (from tutorial): <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css" /> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script src="https://kit.fontawesome.com/3276208b29.js" crossorigin="anonymous"></script>
+    <style> body
+
+{
+
+}
+
+.title, .label{
+
+                color:white;
+
+}
+
+ 
+
+.hero-head {
+
+    background-color: black;
+
+}
+
+ 
+
+.navbar-item {
+
+    color: white;
+
+}
+
+ 
+
+.hero-body {
+
+    background-color: black;
+
+                color:white;
+
+}
+
+ 
+
+.select{
+
+                min-width:660px;
+
+}
+
+ 
+
+.is-info{
+
+                min-width:200px; </style>
+</head>
+
+<body>
+<div class="hero is-fullheight" style="background-color:#C4FCEF;">
+
+    <div class="hero-head">
+        <nav class="navbar">
+            <div class="container">
+
+                <div id="navbarMenuHeroA" class="navbar-menu">
+                    <div class="navbar-end">
+                        {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.getStarted') }}" class="navbar-item">
+                            Get Started
+                        </a>
+			<a href="{{ url_for('auth.logout') }}" class="navbar-item">
+                            Logout
+                        </a>
+                        {% endif %}
+                        {% if not current_user.is_authenticated %}
+			<a href="{{ url_for('main.index') }}" class="navbar-item">
+                            Home
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="navbar-item">
+                            Login
+                        </a>
+                        <a href="{{ url_for('auth.signup') }}" class="navbar-item">
+                            Sign Up
+                        </a>
+                        {% endif %}
+              
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <div class="hero-body">
+        <div class="container"> <!-- can add has-text-centered for all other templates to have stuff centered-->
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+</body>
+
+</html>

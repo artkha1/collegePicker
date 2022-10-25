@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="title">
+    Hi! To see your college matches, please answer the questions below. If you don't know an answer or simply have no preference, leave that question blank. Note that multiple options can be selected for each of the questions. To select multiple options or to deselect, hold down ctrl.
+</h1>
+
+<form method="POST" action="/getStarted" role="form">
+    {{ form.csrf_token }}
+    
+    <div class="field">
+        <div class ="control">
+            {{ form.relAffil.label(class_="label") }}
+            <div class = "select is-multiple" onclick="optionSelected()">
+            {{ form.relAffil(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <div class="field" id = "relImp">
+        <div class="control">
+            {{ form.relImp.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.relImp(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.size.label(class_="label") }}
+            <div class = "select is-multiple" onclick="optionSelected()">
+            {{ form.size(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <div class="field" id = "sizeImp">
+        <div class="control">
+            {{ form.sizeImp.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.sizeImp(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.major.label(class_="label") }}
+            <div class = "select is-multiple">
+            {{ form.major(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+    <div class="field">
+        <div class="control">
+            {{ form.allMajors() }} {{ form.allMajors.label(class_="checkbox") }}
+        </div>
+    </div>
+
+   <br>
+   <div class="field">
+       <div class="control">
+            {{ form.satMath.label(class_="label") }}
+            {{ form.satMath(class_="input is-info is-rounded",placeholder="200-800",style="width: 10%;") }}
+        </div>
+    </div>
+
+   <br>
+   <div class="field">
+       <div class="control">
+            {{ form.satEng.label(class_="label") }}
+            {{ form.satEng(class_="input is-info is-rounded",placeholder="200-800",style="width: 10%;") }}
+        </div>
+    </div>
+
+   <br>
+   <div class="field">
+       <div class="control">
+            {{ form.act.label(class_="label") }}
+            {{ form.act(class_="input is-info is-rounded",placeholder="1-36",style="width: 10%;") }}
+        </div>
+    </div>
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.setting.label(class_="label") }}
+            <div class = "select is-multiple" onclick="optionSelected()">
+            {{ form.setting(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+   <br>
+    <div class="field" id = "settingImp">
+        <div class="control">
+            {{ form.settingImp.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.settingImp(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.region.label(class_="label") }}
+            <div class = "select is-multiple" onclick="optionSelected()">
+            {{ form.region(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+   <br>
+    <div class="field" id = "regionImp">
+        <div class="control">
+            {{ form.regionImp.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.regionImp(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.state.label(class_="label") }}
+            <div class = "select is-multiple" onclick="optionSelected()">
+            {{ form.state(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+   <br>
+    <div class="field" id = "stateImp">
+        <div class="control">
+            {{ form.stateImp.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.stateImp(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+     <div class="field">
+        <div class ="control">
+            {{ form.specPref.label(class_="label") }}
+            <div class = "select is-multiple">
+            {{ form.specPref(class_="select is-multiple",size=3) }}
+            </div>
+        </div>
+    </div>
+
+    <br>
+    <div class="field">
+        <div class="control">
+            {{ form.income.label(class_="label") }}
+            <div class = "select is-rounded">
+            {{ form.income(class_="select is-rounded") }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- <button type="submit" class="button is-success">Submit</button> --->
+    <div class="container has-text-centered">
+        <input class="button is-success is-rounded is-medium" type="submit" value="Show me my matches!">
+    </div>
+
+    
+    <!-- {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="notification is-danger">
+            {{ messages[0] }}
+        </div>
+    {% endif %}
+    {% endwith %} -->
+
+    
+
+	<script>
+        window.onload = optionSelected(); //show importance questions if answwer was selected
+
+        function optionSelected(){
+            "use strict";
+            //var religion = document.getElementById('relAffil').selectedOptions[0].value; //the code of the answer
+            var religion = document.getElementById('relAffil').selectedOptions;
+            var size = document.getElementById('size').selectedOptions;
+            var setting = document.getElementById('setting').selectedOptions;
+            var region = document.getElementById('region').selectedOptions;
+            var state = document.getElementById('state').selectedOptions;
+            
+            if(religion.length != 0 ){
+                 document.getElementById("relImp").style.display = 'block';
+            }else{
+                document.getElementById("relImp").style.display = 'none';
+            }
+            
+            if(size.length != 0){
+            	document.getElementById("sizeImp").style.display = 'block';
+            }else{
+            	document.getElementById("sizeImp").style.display = 'none';
+            }
+
+            if(setting.length != 0){
+            	document.getElementById("settingImp").style.display = 'block';
+            }else{
+            	document.getElementById("settingImp").style.display = 'none';
+            }
+
+            if(region.length != 0){
+            	document.getElementById("regionImp").style.display = 'block';
+            }else{
+            	document.getElementById("regionImp").style.display = 'none';
+            }
+
+            if(state.length != 0){
+            	document.getElementById("stateImp").style.display = 'block';
+            }else{
+            	document.getElementById("stateImp").style.display = 'none';
+            }
+        };
+ 
+  </script>
+ 
+</form>
+
+{% endblock %}
