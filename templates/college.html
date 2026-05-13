@@ -1,81 +1,95 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="content">
 
-	<h1 class="title is-1 has-text-centered"> <a href={{college['school.school_url']}} target="_blank" rel="noopener noreferrer"> <u> {{college['school.name']}} </u> </a> </h1>
+  <h1 class="title is-1 has-text-centered">
+    {% if college['website'] == college['website'] %}
+      <a href="{{ college['website'] }}" target="_blank" rel="noopener noreferrer">
+        <u>{{ college['name'] }}</u>
+      </a>
+    {% else %}
+      {{ college['name'] }}
+    {% endif %}
+  </h1>
 
+  <p class="has-text-centered subtitle is-1">
+    {{ college['city'] }}, {{ college['state'] }}
+  </p>
 
-	<div class="is-flex is-justify-content-center">
-		<div class="icon-text">
-			<span class="icon is-large">
-				<i class="fa-solid fa-school fa-2x"></i>
-			</span>
-			<span> <h1 class="title is-2"> Overview </h1> </span>
-		</div>
-	</div>
+  <!-- ===================== OVERVIEW ===================== -->
+  <div class="is-flex is-justify-content-center mt-5">
+    <div class="icon-text">
+      <span class="icon is-large"><i class="fa-solid fa-school fa-2x"></i></span>
+      <span><h2 class="title is-2">Overview</h2></span>
+    </div>
+  </div>
 
-	<h2 class="subtitle has-text-grey-darker is-4">
-	<ul>
-		<li> Location: <b> {{college['school.city']}}, {{college['school.state']}} </b> </li>
-		{% for col in overview %}
-			{% if col in college['ColsUsed'] %}
-				{% if col not in specPref %}
-					<li>{{fieldsDict[col]}}: <b> {{college[col]}} </b> </li>
-				{% else %}
-					<li> {{fieldsDict[col]}} </li>
-				{% endif %}
-			{% endif %}
-		{% endfor %}
-	</ul>
-	</h2>
+  <ul class="subtitle is-5">
+    {% if college['type'] == college['type'] %}
+      <li>{{ fieldsDict['type'] }}: <b>{{ college['type'] }}</b></li>
+    {% endif %}
+    {% if college['religious_affiliation'] == college['religious_affiliation'] %}
+      <li>{{ fieldsDict['religious_affiliation'] }}: <b>{{ college['religious_affiliation'] }}</b></li>
+    {% endif %}
+    {% if college['locale'] == college['locale'] %}
+      <li>{{ fieldsDict['locale'] }}: <b>{{ college['locale'] }}</b></li>
+    {% endif %}
+    {% if college['num_students'] == college['num_students'] and college['num_students'] != '0' %}
+      <li>{{ fieldsDict['num_students'] }}: <b>{{ college['num_students'] }}</b></li>
+    {% endif %}
+    {% for col in specPref %}
+      {% if college[col] == 1 or college[col] == True or college[col] == '1' %}
+        <li>{{ fieldsDict[col] }}</li>
+      {% endif %}
+    {% endfor %}
+  </ul>
 
+  <!-- ===================== ACADEMICS ===================== -->
+  <div class="is-flex is-justify-content-center mt-5">
+    <div class="icon-text">
+      <span class="icon is-large"><i class="fa-solid fa-graduation-cap fa-2x"></i></span>
+      <span><h2 class="title is-2">Academics</h2></span>
+    </div>
+  </div>
 
+  <ul class="subtitle is-5">
+    {% for col in academics %}
+      {% set val = college[col] %}
+      {% if val == val and val != '0' and val != '0%' and val != '0.0%' %}
+        <li>{{ fieldsDict[col] }}: <b>{{ val }}</b></li>
+      {% endif %}
+    {% endfor %}
+  </ul>
 
-	<div class="is-flex is-justify-content-center">
-		<div class="icon-text">
-			<span class="icon is-large">
-				<i class="fa-solid fa-graduation-cap fa-2x"></i>
-			</span>
-			<span> <h1 class="title is-2"> Academics </h1> </span>
-		</div>
-	</div>
+  <!-- ===================== FINANCES ===================== -->
+  <div class="is-flex is-justify-content-center mt-5">
+    <div class="icon-text">
+      <span class="icon is-large"><i class="fa-solid fa-coins fa-2x"></i></span>
+      <span><h2 class="title is-2">Finances</h2></span>
+    </div>
+  </div>
 
-	<h2 class="subtitle has-text-grey-darker is-4">
-	<ul>
-		{% for col in academics %}
-			{% if col in college['ColsUsed'] %}
-				<li>{{fieldsDict[col]}}: <b> {{college[col]}} </b></li>
-			{% endif %}
-		{% endfor %}
-	</ul>
-	</h2>
+  {% if college['finaid_website'] == college['finaid_website'] %}
+  <p class="has-text-centered title is-3">
+    <a href="{{ college['finaid_website'] }}" target="_blank" rel="noopener noreferrer">
+      Net Price Calculator
+    </a>
+  </p>
+  {% endif %}
 
+  <ul class="subtitle is-5">
+    {% for col in finance %}
+      {% set val = college[col] %}
+      {% if val == val and val != '0' %}
+        <li>{{ fieldsDict[col] }}: <b>${{ val }}</b></li>
+      {% endif %}
+    {% endfor %}
+  </ul>
 
-
-	<div class="is-flex is-justify-content-center">
-		<div class="icon-text">
-			<span class="icon is-large">
-				<i class="fa-solid fa-coins fa-2x"></i>
-			</span>
-			<span> <h1 class="title is-2"> Finances </h1> </span>
-		</div>
-	</div>
-
-	<h2 class="subtitle has-text-grey-darker is-4">
-	<ul>
-		{% for col in finance %}
-			{% if col in college['ColsUsed'] %}
-				<li>{{fieldsDict[col]}}: <b> ${{college[col]}} </b></li>
-			{% endif %}
-		{% endfor %}
-		{% if 'school.price_calculator_url' in college['ColsUsed'] %}
-			<li> <a href={{college['school.price_calculator_url']}} target="_blank" rel="noopener noreferrer"> Link to the college's net price calculator </a></li>
-		{% endif %}
-	</ul>
-	</h2>
+  <div class="has-text-centered mt-6">
+    <a href="{{ url_for('main.output') }}" class="button is-link">← Back to results</a>
+  </div>
 
 </div>
-
 {% endblock %}

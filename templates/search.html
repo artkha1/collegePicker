@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+  .hero-body {
+    align-items: flex-start !important;
+  }
+  .sort-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+  }
+  .sort-link {
+    color: inherit;
+    text-decoration: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-weight: 600;
+  }
+  .sort-link:hover {
+    text-decoration: underline;
+  }
+  .sort-indicator {
+    margin-left: 0.25rem;
+    font-weight: 700;
+  }
+  .sort-indicator.inactive {
+    opacity: 0.35;
+  }
+  tr.college-row {
+    cursor: pointer;
+  }
+</style>
+
+<div class="container">
+  <h1 class="title">Search colleges</h1>
+
+  <form method="get" action="{{ url_for('search.index') }}" class="mb-5">
+    <div class="field has-addons">
+      <div class="control is-expanded">
+        <input class="input" type="search" name="q" value="{{ q }}" placeholder="College name…" autocomplete="off">
+      </div>
+      <div class="control">
+        <button class="button is-primary" type="submit">Search</button>
+      </div>
+    </div>
+
+    <div class="mt-3">
+      <button class="button is-link is-light" type="button" id="toggleFiltersBtn">Filter</button>
+    </div>
+
+    <div id="filtersBlock" class="box mt-3" style="display: none;">
+      <div class="columns is-variable is-4">
+        <div class="column">
+          <label class="label">Year</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select name="year">
+                {% for y in years %}
+                  <option value="{{ y }}" {% if selected_year == (y|string) %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <label class="label">State</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select name="state">
+                <option value="">Any</option>
+                {% for s in states %}
+                  <option value="{{ s.value }}" {% if selected_state == s.value %}selected{% endif %}>{{ s.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <label class="label">Type</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select name="type">
+                <option value="">Any</option>
+                {% for t in types %}
+                  <option value="{{ t.value }}" {% if selected_type == t.value %}selected{% endif %}>{{ t.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <label class="label">Size range</label>
+          <div class="field is-grouped is-align-items-center">
+            <div class="control is-expanded">
+              <input class="input" type="number" name="size_min" value="{{ size_min }}" min="0" placeholder="Min">
+            </div>
+            <div class="control">
+              <span class="px-2">-</span>
+            </div>
+            <div class="control is-expanded">
+              <input class="input" type="number" name="size_max" value="{{ size_max }}" min="0" placeholder="Max">
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <label class="label">Admission rate range</label>
+          <div class="field is-grouped is-align-items-center">
+            <div class="control is-expanded has-icons-right">
+              <input class="input" type="number" name="adm_min" value="{{ adm_min }}" min="0" max="100" step="0.01" placeholder="Min">
+              <span class="icon is-small is-right">%</span>
+            </div>
+            <div class="control">
+              <span class="px-2">-</span>
+            </div>
+            <div class="control is-expanded has-icons-right">
+              <input class="input" type="number" name="adm_max" value="{{ adm_max }}" min="0" max="100" step="0.01" placeholder="Max">
+              <span class="icon is-small is-right">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="button is-primary" type="submit">Apply</button>
+        <a class="button is-light" href="{{ url_for('search.index', q=q, year=default_search_year) }}">Clear</a>
+      </div>
+    </div>
+  </form>
+
+  {% if q %}
+    {% if results %}
+      <p class="mb-3">
+        {{ total }} result{% if total != 1 %}s{% endif %} for &ldquo;{{ q }}&rdquo;
+        {% if total_pages and total_pages > 1 %}
+          — Page {{ page }} of {{ total_pages }}
+        {% endif %}
+      </p>
+
+      {# Sorting arrows: first click shows ↓, second click shows ↑. Default shows ↕. #}
+      {% set active_sort = sort|default('', true) %}
+      {% set active_dir = dir|default('', true) %}
+      {% set active_arrow = arrow|default('', true) %}
+
+      <div class="table-container">
+        {# header hrefs (clickable table headers) #}
+        {% if active_sort == 'name' and active_dir|lower == 'asc' %}
+          {% set href_name = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='name', dir='desc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_name = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='name', dir='asc', arrow='down', page=1) %}
+        {% endif %}
+
+        {% if active_sort == 'state' and active_dir|lower == 'asc' %}
+          {% set href_state = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='state', dir='desc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_state = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='state', dir='asc', arrow='down', page=1) %}
+        {% endif %}
+
+        {% if active_sort == 'type' and active_dir|lower == 'asc' %}
+          {% set href_type = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='type', dir='desc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_type = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='type', dir='asc', arrow='down', page=1) %}
+        {% endif %}
+
+        {% if active_sort == 'size' and active_dir|lower == 'desc' %}
+          {% set href_size = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='size', dir='asc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_size = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='size', dir='desc', arrow='down', page=1) %}
+        {% endif %}
+
+        {% if active_sort == 'sat_avg' and active_dir|lower == 'desc' %}
+          {% set href_sat = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='sat_avg', dir='asc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_sat = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='sat_avg', dir='desc', arrow='down', page=1) %}
+        {% endif %}
+
+        {% if active_sort == 'admission_rate' and active_dir|lower == 'desc' %}
+          {% set href_adm = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='admission_rate', dir='asc', arrow='up', page=1) %}
+        {% else %}
+          {% set href_adm = url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort='admission_rate', dir='desc', arrow='down', page=1) %}
+        {% endif %}
+
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>
+                <a class="sort-link" href="{{ href_name }}">
+                  Name
+                  {% if active_sort == 'name' %}
+                    <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                  {% else %}
+                    <span class="sort-indicator inactive">↕</span>
+                  {% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="sort-link" href="{{ href_state }}">
+                  State
+                  {% if active_sort == 'state' %}
+                    <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                  {% else %}
+                    <span class="sort-indicator inactive">↕</span>
+                  {% endif %}
+                </a>
+              </th>
+              <th>
+                <a class="sort-link" href="{{ href_type }}">
+                  Type
+                  {% if active_sort == 'type' %}
+                    <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                  {% else %}
+                    <span class="sort-indicator inactive">↕</span>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="has-text-right">
+                <a class="sort-link" href="{{ href_size }}">
+                  Size
+                  {% if active_sort == 'size' %}
+                    <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                  {% else %}
+                    <span class="sort-indicator inactive">↕</span>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="has-text-right">
+                <a class="sort-link" href="{{ href_sat }}">
+                  <span class="is-block">
+                    SAT Average
+                    {% if active_sort == 'sat_avg' %}
+                      <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                    {% else %}
+                      <span class="sort-indicator inactive">↕</span>
+                    {% endif %}
+                  </span>
+                  <span class="is-block is-size-7 has-text-grey has-text-weight-normal">
+                    (year {{ selected_year }})
+                  </span>
+                </a>
+              </th>
+              <th class="has-text-right">
+                <a class="sort-link" href="{{ href_adm }}">
+                  <span class="is-block">
+                    Admission Rate Average / Yearly
+                    {% if active_sort == 'admission_rate' %}
+                      <span class="sort-indicator">{% if active_arrow == 'up' %}↑{% else %}↓{% endif %}</span>
+                    {% else %}
+                      <span class="sort-indicator inactive">↕</span>
+                    {% endif %}
+                  </span>
+                  <span class="is-block is-size-7 has-text-grey has-text-weight-normal">
+                    (year {{ selected_year }})
+                  </span>
+                </a>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in results %}
+              <tr class="college-row" data-college-id="{{ row.college_id }}">
+                <td><strong>{{ row.name }}</strong></td>
+                <td>{{ row.state_full or row.state or '' }}</td>
+                <td>{{ row.type_label or '' }}</td>
+                <td class="has-text-right">
+                  {% if row.num_students is not none %}
+                    {{ "{:,}".format(row.num_students) }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if row.sat_avg is not none %}
+                    {{ "{:,}".format(row.sat_avg) }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td class="has-text-right">
+                  {% if row.admission_rate_avg is not none or row.admission_rate is not none %}
+                    {% if row.admission_rate_avg is not none %}
+                      {{ (row.admission_rate_avg * 100) | round(2) }}%
+                    {% else %}
+                      N/A
+                    {% endif %}/
+                    {% if row.admission_rate is not none %}
+                      {{ (row.admission_rate * 100) | round(2) }}%
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if total_pages and total_pages > 1 %}
+        <nav class="pagination is-centered mt-4" role="navigation" aria-label="pagination">
+          <a
+            class="pagination-previous {% if page <= 1 %}is-disabled{% endif %}"
+            {% if page > 1 %}
+              href="{{ url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort=sort, dir=dir, arrow=arrow, page=page-1) }}"
+            {% endif %}
+          >
+            Previous
+          </a>
+          <a
+            class="pagination-next {% if page >= total_pages %}is-disabled{% endif %}"
+            {% if page < total_pages %}
+              href="{{ url_for('search.index', q=q, year=selected_year, state=selected_state, type=selected_type, size_min=size_min, size_max=size_max, adm_min=adm_min, adm_max=adm_max, sort=sort, dir=dir, arrow=arrow, page=page+1) }}"
+            {% endif %}
+          >
+            Next
+          </a>
+        </nav>
+      {% endif %}
+    {% else %}
+      <p class="notification is-light">No colleges found for &ldquo;{{ q }}&rdquo;.</p>
+    {% endif %}
+  {% else %}
+    <p class="has-text-grey">Enter a name above to see matching colleges.</p>
+  {% endif %}
+</div>
+
+<script>
+  (function () {
+    const btn = document.getElementById('toggleFiltersBtn');
+    const block = document.getElementById('filtersBlock');
+    if (!btn || !block) return;
+
+    function hasAnyFilterValue() {
+      const qs = new URLSearchParams(window.location.search);
+      return ['state', 'type', 'size_min', 'size_max', 'adm_min', 'adm_max'].some(k => (qs.get(k) || '').trim() !== '');
+    }
+
+    const startOpen = hasAnyFilterValue();
+    block.style.display = startOpen ? 'block' : 'none';
+
+    btn.addEventListener('click', function () {
+      block.style.display = (block.style.display === 'none') ? 'block' : 'none';
+    });
+  })();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    const charts = new Map();
+
+    function metricsUrl(collegeId) {
+      const tpl = "{{ url_for('search.college_metrics', college_id=0) }}";
+      return tpl.replace("/0/", "/" + collegeId + "/");
+    }
+
+    document.querySelectorAll("tr.college-row").forEach((tr) => {
+      tr.addEventListener("click", async (ev) => {
+        if (ev.target.closest("a")) return;
+        const collegeId = tr.getAttribute("data-college-id");
+        if (!collegeId) return;
+
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains("college-expanded")) {
+          next.remove();
+          return;
+        }
+        document.querySelectorAll("tr.college-expanded").forEach((n) => n.remove());
+
+        const exp = document.createElement("tr");
+        exp.className = "college-expanded";
+        exp.innerHTML =
+          '<td colspan="6">' +
+          '<div class="box">' +
+          '<p class="mb-2"><strong>Metrics over years</strong> (cost, admission rate, SAT average, graduation rate)</p>' +
+          '<div style="height: 280px;">' +
+          '<canvas id="chart-' +
+          collegeId +
+          '"></canvas>' +
+          "</div></div></td>";
+        tr.parentNode.insertBefore(exp, tr.nextSibling);
+
+        const canvas = exp.querySelector("#chart-" + collegeId);
+        if (!canvas || typeof Chart === "undefined") return;
+
+        const idNum = Number(collegeId);
+        if (charts.has(idNum)) {
+          try {
+            charts.get(idNum).destroy();
+          } catch (e) {}
+          charts.delete(idNum);
+        }
+
+        try {
+          const resp = await fetch(metricsUrl(collegeId));
+          if (!resp.ok) throw new Error("bad response");
+          const data = await resp.json();
+          const years = data.years || [];
+          const cost = (data.avg_cost_of_attendance || []).map((v) =>
+            v === null || v === undefined ? null : Number(v)
+          );
+          const adm = (data.admission_rate_pct || []).map((v) =>
+            v === null || v === undefined ? null : Number(v)
+          );
+          const sat = (data.sat_avg || []).map((v) =>
+            v === null || v === undefined ? null : Number(v)
+          );
+          const grad = (data.graduation_rate_pct || []).map((v) =>
+            v === null || v === undefined ? null : Number(v)
+          );
+
+          const chart = new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+              labels: years,
+              datasets: [
+                {
+                  label: "Avg cost of attendance",
+                  data: cost,
+                  yAxisID: "yMoney",
+                  borderColor: "#e53935",
+                  backgroundColor: "rgba(229, 57, 53, 0.12)",
+                  pointBackgroundColor: "#e53935",
+                  pointBorderColor: "#b71c1c",
+                  borderWidth: 2,
+                  tension: 0.2,
+                },
+                {
+                  label: "Admission rate (%)",
+                  data: adm,
+                  yAxisID: "yPct",
+                  borderColor: "#1e88e5",
+                  backgroundColor: "rgba(30, 136, 229, 0.12)",
+                  pointBackgroundColor: "#1e88e5",
+                  pointBorderColor: "#0d47a1",
+                  borderWidth: 2,
+                  tension: 0.2,
+                },
+                {
+                  label: "Graduation rate (%)",
+                  data: grad,
+                  yAxisID: "yPct",
+                  borderColor: "#fbc02d",
+                  backgroundColor: "rgba(251, 192, 45, 0.15)",
+                  pointBackgroundColor: "#fbc02d",
+                  pointBorderColor: "#f57f17",
+                  borderWidth: 2,
+                  tension: 0.2,
+                },
+                {
+                  label: "SAT average",
+                  data: sat,
+                  yAxisID: "ySat",
+                  borderColor: "#43a047",
+                  backgroundColor: "rgba(67, 160, 71, 0.12)",
+                  pointBackgroundColor: "#43a047",
+                  pointBorderColor: "#1b5e20",
+                  borderWidth: 2,
+                  tension: 0.2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: { legend: { position: "top" } },
+              scales: {
+                yMoney: {
+                  position: "left",
+                  ticks: {
+                    callback: (v) => "$" + Number(v).toLocaleString(),
+                  },
+                },
+                yPct: {
+                  position: "right",
+                  ticks: {
+                    callback: (v) => Number(v).toFixed(0) + "%",
+                  },
+                  grid: { drawOnChartArea: false },
+                },
+                ySat: {
+                  position: "right",
+                  offset: true,
+                  ticks: {
+                    callback: (v) => Number(v).toFixed(0),
+                  },
+                  grid: { drawOnChartArea: false },
+                },
+              },
+            },
+          });
+          charts.set(idNum, chart);
+        } catch (e) {
+          exp.querySelector("td").innerHTML =
+            '<div class="notification is-light">Could not load chart data.</div>';
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}
