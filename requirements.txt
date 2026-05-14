@@ -8,4 +8,4 @@ python-dotenv==1.2.2
 requests==2.33.1
 numpy==2.4.4
 SQLAlchemy==2.0.49
-mysql-connector-python==9.6.0
+psycopg2-binary==2.9.10

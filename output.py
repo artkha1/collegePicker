@@ -1,41 +1,40 @@
 import pandas as pd
 import numpy as np
+from sqlalchemy import text
+
 from __init__ import db
+from models import GET_TOP_COLLEGES_SQL
 
 
-def load_college_data(response_id):
+def load_college_data(user_id: int) -> pd.DataFrame:
     """
-    Call the GetTopColleges stored procedure for this user.
-    Returns a DataFrame with some pre-filtered candidate colleges.
+    Run the GET_TOP_COLLEGES_SQL raw-SQL query for this user and return
+    the results as a DataFrame.  Replaces the old stored-procedure callproc.
     """
+    with db.engine.connect() as conn:
+        result = conn.execute(
+            GET_TOP_COLLEGES_SQL,
+            {
+                "user_id":    int(user_id),
+                "all_majors": bool(
+                    conn.execute(
+                        text("SELECT all_majors FROM users WHERE id = :uid"),
+                        {"uid": user_id},
+                    ).scalar()
+                ),
+            },
+        )
+        rows = result.mappings().all()
 
-    raw_conn = db.engine.raw_connection()
-
-    try:
-        cursor = raw_conn.cursor(dictionary=True)
-
-        cursor.callproc("GetTopColleges", [int(response_id)])
-
-        rows = []
-
-        for result in cursor.stored_results():
-            rows = result.fetchall()
-
-        df = pd.DataFrame(rows)
-
-        cursor.close()
-        return df
-
-    finally:
-        raw_conn.close()
+    return pd.DataFrame(rows)
 
 
 
 def calc(rels, sizes, majors, settings, regions, states, specPrefs,
          relImp, sizeImp, allMajors, satMath, satEng, act,
-         setImp, regImp, stImp, income, response_id):
+         setImp, regImp, stImp, income, user_id):
 
-    collegeInfo = load_college_data(response_id)
+    collegeInfo = load_college_data(user_id)
 
     collegeInfo['Score'] = 0
     maxScore = 0

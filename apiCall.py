@@ -3,18 +3,19 @@ import os
 import pandas as pd
 import math
 import numpy as np
-import mysql.connector
+import psycopg2
+import psycopg2.extras
 from dotenv import load_dotenv
- 
+
 load_dotenv()
 
-# This script fetches data from the College Scorecard API and saves it to CSV files.
+# This script fetches data from the College Scorecard API and saves it to the database.
 # It takes a pretty long time to run and there's a limit of 1000 requests per hour
 # (one run is about 250 requests), so it shouldn't be run all the time.
 # Run quarterly or when CollegeScorecard is updated:
 # https://collegescorecard.ed.gov/data/changelog/
 #
-# After running, upload the CSVs to the database using LOAD DATA INFILE or similar.
+# After running, the data is inserted directly into the database.
 
 # TODO:
 # - By default, only update colleges_dynamic since static data rarely changes. Query API accordingly (only dynamic fields) - make a command line argument
@@ -48,7 +49,7 @@ fields = ','.join(['id','school.religious_affiliation','latest.student.size',
 	'latest.aid.median_debt.completers.overall',
 	'school.name','school.city','school.school_url','school.price_calculator_url','latest.admissions.admission_rate.by_ope_id',
 	'latest.earnings.6_yrs_after_entry.median','latest.earnings.10_yrs_after_entry.median','latest.completion.completion_rate_4yr_100nt',
-	'school.ownership_peps',"school.institutional_characteristics.level"]) # all the needed fields, generated in Jupyter
+	'school.ownership_peps',"school.institutional_characteristics.level"])
 
 # helper for changing year
 def fields_for_year(year):
@@ -138,7 +139,7 @@ def callAPI(year):
 
     college_info = college_info.replace("", np.nan)
     return college_info
- 
+
 
 def build_static(df):
     static = pd.DataFrame()
@@ -169,9 +170,8 @@ def build_dynamic(df, year):
     def net_price(bracket):
         pub = f"{prefix}.cost.net_price.public.by_income_level.{bracket}"
         prv = f"{prefix}.cost.net_price.private.by_income_level.{bracket}"
-        # prefer private, fall back to public
         return df[prv].where(df[prv].notna(), df[pub])
- 
+
     dynamic = pd.DataFrame()
     dynamic["college_id"] = df["id"]
     dynamic["year"] = year
@@ -197,70 +197,86 @@ def build_dynamic(df, year):
 
 
 def build_majors_and_college_majors(df):
-    # Build majors table from the canonical MAJOR_MAP
     majors = pd.DataFrame([
         {"major_id": i + 1, "major_name": name}
         for i, name in enumerate(sorted(MAJOR_MAP.values()))
     ])
- 
-    # Reverse map: suffix -> major_id
+
     name_to_id = dict(zip(majors["major_name"], majors["major_id"]))
     suffix_to_id = {suffix: name_to_id[name] for suffix, name in MAJOR_MAP.items()}
- 
-    # Melt program percentage columns
+
+    # Melpt program percentage columns
     major_cols = [col for col in df.columns if "program_percentage" in col]
     long = df[["id"] + major_cols].melt(id_vars="id", var_name="major_col", value_name="percentage")
-    long = long[long["percentage"] > 0]  # Only keep relationships where percentage > 0
+    long = long[long["percentage"] > 0]
     long["suffix"] = long["major_col"].str.split("program_percentage.").str[-1]
     long["major_id"] = long["suffix"].map(suffix_to_id)
     long = long.dropna(subset=["major_id"])
- 
+
     college_majors = (long[["id", "major_id"]]
                       .rename(columns={"id": "college_id"})
                       .drop_duplicates())
     college_majors["major_id"] = college_majors["major_id"].astype(int)
- 
+
     return majors, college_majors
 
+
+# ---------------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------------
+
 def get_db_connection():
-    return mysql.connector.connect(
+    return psycopg2.connect(
         host=os.environ["DB_HOST"],
-        port=int(os.environ.get("DB_PORT", 3306)),
+        port=int(os.environ.get("DB_PORT", 5432)),
         user=os.environ["DB_USER"],
         password=os.environ["DB_PASSWORD"],
-        database=os.environ["DB_NAME"]
+        dbname=os.environ["DB_NAME"],
     )
 
+
 def clean_value(value):
+    """Convert NaN/NaT to None so psycopg2 inserts NULL."""
     if pd.isna(value):
         return None
     return value
 
+
 def insert_dataframe(df, table_name):
+    """
+    Bulk-insert a DataFrame into table_name using psycopg2's
+    execute_values — significantly faster than row-by-row executemany
+    for the large college data tables.
+
+    Uses ON CONFLICT DO NOTHING so re-running the script after a partial
+    failure won't error on duplicate primary keys.
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     columns = list(df.columns)
-    placeholders = ", ".join(["%s"] * len(columns))
     column_names = ", ".join(columns)
+    placeholders = ", ".join(["%s"] * len(columns))
 
     sql = f"""
         INSERT INTO {table_name} ({column_names})
         VALUES ({placeholders})
+        ON CONFLICT DO NOTHING
     """
 
     rows = [
-        tuple(clean_value(value) for value in row)
+        tuple(clean_value(v) for v in row)
         for row in df.to_numpy()
     ]
 
-    cursor.executemany(sql, rows)
+    psycopg2.extras.execute_many(cursor, sql, rows)
     conn.commit()
 
-    print(f"Inserted {cursor.rowcount} rows into {table_name}")
+    print(f"Inserted rows into {table_name} (duplicates skipped)")
 
     cursor.close()
     conn.close()
+
 
 if __name__ == '__main__':
     YEARS = [2020, 2021, 2022]

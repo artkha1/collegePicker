@@ -1,232 +1,257 @@
-from flask import Blueprint, render_template, flash, request, redirect,url_for, session
-from flask_login import current_user
-from __init__ import create_app, db
-from form import Questionnaire, religionChoices, sizeChoices, majorChoices, settingChoices, regionChoices, stateChoices, specPrefChoices
-from models import get_user_prefs
-from sqlalchemy import text
-from output import calc
+"""
+main.py — Core application routes.
+"""
+
 import os
 
-# our main blueprint
-main = Blueprint('main', __name__)
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask_login import current_user
+from sqlalchemy import text
 
-def _response_id():
-    """Return the active response_id for the current request (logged-in or anonymous)."""
+from __init__ import db, create_app
+from form import (
+    Questionnaire,
+    majorChoices,
+    regionChoices,
+    religionChoices,
+    settingChoices,
+    sizeChoices,
+    specPrefChoices,
+    stateChoices,
+)
+from models import User, get_user_prefs, purge_anonymous_users
+from output import calc
+
+main = Blueprint("main", __name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _current_user_id() -> int | None:
+    """Return the active users.id for the current request (anon or logged-in)."""
     if current_user.is_authenticated:
         return current_user.id
-    return session.get('response_id')
- 
- 
+    return session.get("response_id")
+
+
+def _get_or_create_anon_user() -> int:
+    """
+    Return the response_id for an anonymous visitor, creating a new User
+    row if this is their first visit.
+    """
+    uid = session.get("response_id")
+    if uid:
+        return uid
+
+    anon = User()                    # all preference fields default to NULL / []
+    db.session.add(anon)
+    db.session.commit()
+    session["response_id"] = anon.id
+    return anon.id
+
+
+def _prepopulate_form(form: Questionnaire, user: User) -> None:
+    """
+    Fill a WTForms Questionnaire with a User's saved preferences so the
+    form renders with their previous answers pre-selected on GET.
+    """
+    # Scalar fields
+    if user.rel_imp     is not None: form.relImp.data     = user.rel_imp
+    if user.size_imp    is not None: form.sizeImp.data    = user.size_imp
+    if user.setting_imp is not None: form.settingImp.data = user.setting_imp
+    if user.region_imp  is not None: form.regionImp.data  = user.region_imp
+    if user.state_imp   is not None: form.stateImp.data   = user.state_imp
+    if user.all_majors  is not None: form.allMajors.data  = user.all_majors
+    if user.sat_math    is not None: form.satMath.data    = user.sat_math
+    if user.sat_eng     is not None: form.satEng.data     = user.sat_eng
+    if user.act         is not None: form.act.data        = user.act
+    if user.income      is not None: form.income.data     = user.income
+
+    # Multi-select fields (list of int codes)
+    if user.rel_affil:  form.relAffil.data  = user.rel_affil
+    if user.sizes:      form.size.data      = user.sizes
+    if user.sel_majors: form.major.data     = user.sel_majors
+    if user.settings:   form.setting.data   = user.settings
+    if user.regions:    form.region.data    = user.regions
+    if user.states:     form.state.data     = user.states
+    if user.spec_prefs: form.specPref.data  = user.spec_prefs
+
+
+def _save_prefs_from_form(user: User, form: Questionnaire) -> None:
+    """
+    Persist submitted form data to the User model.
+    Replaces the old SaveUserPreferences stored procedure.
+    """
+    # Scalar fields
+    user.rel_imp     = form.relImp.data
+    user.size_imp    = form.sizeImp.data
+    user.setting_imp = form.settingImp.data
+    user.region_imp  = form.regionImp.data
+    user.state_imp   = form.stateImp.data
+    user.all_majors  = form.allMajors.data
+    user.sat_math    = form.satMath.data
+    user.sat_eng     = form.satEng.data
+    user.act         = form.act.data
+    user.income      = form.income.data
+
+    # Multi-select fields — store just the integer codes; names are
+    # static constants in form.py so we don't need to persist them.
+    user.rel_affil  = form.relAffil.data  or []
+    user.sizes      = form.size.data      or []
+    user.sel_majors = form.major.data     or []
+    user.settings   = form.setting.data   or []
+    user.regions    = form.region.data    or []
+    user.states     = form.state.data     or []
+    user.spec_prefs = form.specPref.data  or []
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
-@main.route('/')  # home page that return 'index'
+@main.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@main.route('/welcome')
+
+@main.route("/welcome")
 def welcome():
-    # Only logged-in users have a name to show; redirect others to getStarted.
     if not current_user.is_authenticated:
-        return redirect(url_for('main.getStarted'))
-    return render_template('welcome.html', name=current_user.name)
+        return redirect(url_for("main.getStarted"))
+    return render_template("welcome.html", name=current_user.name)
 
-@main.route('/getStarted',methods=['GET', 'POST'])
+
+@main.route("/getStarted", methods=["GET", "POST"])
 def getStarted():
-    form = Questionnaire(request.form)  # initialize the form
+    form = Questionnaire(request.form)
 
-    if request.method == 'GET':  # if we are landing on this page, show the page
-        return render_template('getStarted.html', form=form)
-    
-    # --- POST: validate then persist with raw SQL ---
+    if request.method == "GET":
+        # Lazy cleanup: delete anonymous rows older than 24 h.
+        # Runs at most once per page load; the indexed WHERE clause makes
+        # it cheap enough to do inline.
+        purge_anonymous_users(ttl_hours=24)
+
+        # Prepopulate form for returning logged-in users.
+        if current_user.is_authenticated:
+            _prepopulate_form(form, current_user)
+
+        return render_template("getStarted.html", form=form)
+
+    # --- POST: validate ---
     if not form.validate():
-        flash('Error: ' + str(form.errors), 'danger')
-        return render_template('getStarted.html', form=form)
- 
-    rid = _response_id()
- 
-    if rid is None:
-        # Anonymous visitor - create a fresh user_responses row
-        result = db.session.execute(
-            text(
-                "INSERT INTO user_responses "
-                "(relImp, sizeImp, allMajors, satMath, satEng, act, "
-                " settingImp, regionImp, stateImp, income) "
-                "VALUES (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
-            )
-        )
-        db.session.commit()
-        # rid = db.session.execute(text("SELECT LAST_INSERT_ID()")).scalar()
-        rid = result.lastrowid
-        session['response_id'] = rid  # remember for this browser session
- 
-    # Call SaveUserPreferences stored procedure - handles DELETEs of old rows,
-    # UPDATE of scalar fields, and audit log INSERT in a SERIALIZABLE transaction
+        flash("Please check your answers: " + str(form.errors), "danger")
+        return render_template("getStarted.html", form=form)
 
-    raw_conn = db.engine.raw_connection()
-    try:
-        cursor = raw_conn.cursor()
-        cursor.callproc('SaveUserPreferences', [
-            rid,
-            form.relImp.data, form.sizeImp.data, form.allMajors.data,
-            form.satMath.data, form.satEng.data, form.act.data,
-            form.settingImp.data, form.regionImp.data, form.stateImp.data,
-            form.income.data
-        ])
-        # Consume all result sets
-        while cursor.nextset():
-            pass
-        raw_conn.commit()
-        cursor.close() 
-    except Exception as e:
-        raw_conn.rollback()
-        raise
-    finally:
-        raw_conn.close()
- 
-    # --- Insert new multi-select preferences (raw SQL) ---
-    rel_map     = dict(religionChoices)
-    size_map    = dict(sizeChoices)
-    major_map   = dict(majorChoices)
-    setting_map = dict(settingChoices)
-    region_map  = dict(regionChoices)
-    state_map   = dict(stateChoices)
-    spec_map    = dict(specPrefChoices)
- 
-    for code in form.relAffil.data:
-        db.session.execute(
-            text("INSERT INTO religions (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": rel_map.get(code)},
-        )
-    for code in form.size.data:
-        db.session.execute(
-            text("INSERT INTO sizes (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": size_map.get(code)},
-        )
-    for code in form.major.data:
-        db.session.execute(
-            text("INSERT INTO user_majors (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": major_map.get(code)},
-        )
-    for code in form.setting.data:
-        db.session.execute(
-            text("INSERT INTO settings (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": setting_map.get(code)},
-        )
-    for code in form.region.data:
-        db.session.execute(
-            text("INSERT INTO regions (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": region_map.get(code)},
-        )
-    for code in form.state.data:
-        db.session.execute(
-            text("INSERT INTO states (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": state_map.get(code)},
-        )
-    for code in form.specPref.data:
-        db.session.execute(
-            text("INSERT INTO specPrefs (user_id, code, name) VALUES (:uid, :code, :name)"),
-            {"uid": rid, "code": code, "name": spec_map.get(code)},
-        )
- 
+    # Retrieve or create the user row for this visitor.
+    if current_user.is_authenticated:
+        user: User = current_user
+    else:
+        uid  = _get_or_create_anon_user()
+        user = db.session.get(User, uid)
+
+    _save_prefs_from_form(user, form)
     db.session.commit()
-    return redirect(url_for('main.output'))
 
-def topCols():
+    return redirect(url_for("main.output"))
+
+
+# ---------------------------------------------------------------------------
+# Output / college detail
+# ---------------------------------------------------------------------------
+
+def _top_colleges():
     """Run the scoring algorithm for the current visitor (anon or logged-in)."""
-    rid = _response_id()
-    if rid is None:
+    uid = _current_user_id()
+    if uid is None:
         return None
- 
-    prefs = get_user_prefs(rid)
+
+    prefs = get_user_prefs(uid)
     if prefs is None:
         return None
- 
-    out  = calc(**prefs, response_id=rid)
-    top5 = out.nlargest(5, 'Score').reset_index()
+
+    top5 = calc(**prefs, user_id=uid).nlargest(5, "Score").reset_index()
     return top5
 
 
-@main.route('/output')  # make a directory for the output where top 5 colleges will be shown with links for more information
+@main.route("/output")
 def output():
-    top5 = topCols()
+    top5 = _top_colleges()
     if top5 is None:
-        # Visitor hasn't submitted the form yet - send them there
-        flash('Please fill out the questionnaire first.')
-        return redirect(url_for('main.getStarted'))
-    return render_template('output.html', df=top5)
+        flash("Please fill out the questionnaire first.")
+        return redirect(url_for("main.getStarted"))
+    return render_template("output.html", df=top5)
 
-@main.route('/college/<int:college_id>/')  # the directory with more information on each college. Different depending on the index of the college passed
+
+@main.route("/college/<int:college_id>/")
 def college(college_id):
-    top5 = topCols()
+    top5 = _top_colleges()
     if top5 is None:
-        flash('Please fill out the questionnaire first.')
-        return redirect(url_for('main.getStarted'))
-    
-    college = top5.iloc[college_id]  # the particular college we are looking at
+        flash("Please fill out the questionnaire first.")
+        return redirect(url_for("main.getStarted"))
 
-    # every column and their corresponding label (generated using code in Jupyter but slightly changed manually)
+    college = top5.iloc[college_id]
+
     fieldsDict = {
-        'name':                   'Name',
-        'city':                   'City',
-        'state':                  'State',
-        'type':                   'Type',
-        'religious_affiliation':  'Religious affiliation',
-        'locale':                 'Setting',
-        'num_students':           'Number of students',
-        'hbcu':                   'Historically Black or Predominantly Black',
-        'annh':                   'Alaska Native / Native Hawaiian-serving',
-        'aanipi':                 'Asian American / Native American / Pacific Islander-serving',
-        'tribal':                 'Tribal college or university',
-        'hispanic':               'Hispanic-serving',
-        'men_only':               'Men-only',
-        'women_only':             'Women-only',
-        'online_only':            'Online-only',
-        'admission_rate':         'Admission rate',
-        'sat_rw_mid':             'SAT Reading & Writing midpoint',
-        'sat_math_mid':           'SAT Math midpoint',
-        'sat_avg':                'SAT average (cumulative)',
-        'act_avg':                'ACT average (cumulative)',
-        'graduation_rate':        'Graduation rate',
-        'median_earnings_6yr':    'Median earnings 6 years after entry',
-        'median_earnings_10yr':   'Median earnings 10 years after entry',
-        'avg_cost_of_attendance': 'Average cost of attendance',
-        'in_state_tuition_fees':  'In-state tuition and fees',
-        'out_state_tuition_fees': 'Out-of-state tuition and fees',
-        'net_price_0_30k':        'Net price — $0–$30,000 family income',
-        'net_price_30_48k':       'Net price — $30,001–$48,000 family income',
-        'net_price_48_75k':       'Net price — $48,001–$75,000 family income',
-        'net_price_75_110k':      'Net price — $75,001–$110,000 family income',
-        'net_price_110k_plus':    'Net price — $110,000+ family income',
-        'median_starting_debt':   'Median starting debt',
+        "name":                   "Name",
+        "city":                   "City",
+        "state":                  "State",
+        "type":                   "Type",
+        "religious_affiliation":  "Religious affiliation",
+        "locale":                 "Setting",
+        "num_students":           "Number of students",
+        "hbcu":                   "Historically Black or Predominantly Black",
+        "annh":                   "Alaska Native / Native Hawaiian-serving",
+        "aanipi":                 "Asian American / Native American / Pacific Islander-serving",
+        "tribal":                 "Tribal college or university",
+        "hispanic":               "Hispanic-serving",
+        "men_only":               "Men-only",
+        "women_only":             "Women-only",
+        "online_only":            "Online-only",
+        "admission_rate":         "Admission rate",
+        "sat_rw_mid":             "SAT Reading & Writing midpoint",
+        "sat_math_mid":           "SAT Math midpoint",
+        "sat_avg":                "SAT average (cumulative)",
+        "act_avg":                "ACT average (cumulative)",
+        "graduation_rate":        "Graduation rate",
+        "median_earnings_6yr":    "Median earnings 6 years after entry",
+        "median_earnings_10yr":   "Median earnings 10 years after entry",
+        "avg_cost_of_attendance": "Average cost of attendance",
+        "in_state_tuition_fees":  "In-state tuition and fees",
+        "out_state_tuition_fees": "Out-of-state tuition and fees",
+        "net_price_0_30k":        "Net price — $0–$30,000 family income",
+        "net_price_30_48k":       "Net price — $30,001–$48,000 family income",
+        "net_price_48_75k":       "Net price — $48,001–$75,000 family income",
+        "net_price_75_110k":      "Net price — $75,001–$110,000 family income",
+        "net_price_110k_plus":    "Net price — $110,000+ family income",
+        "median_starting_debt":   "Median starting debt",
     }
- 
-    overview  = ['type', 'religious_affiliation', 'locale', 'num_students',
-                 'hbcu', 'annh', 'aanipi', 'tribal', 'hispanic',
-                 'men_only', 'women_only', 'online_only']
-    academics = ['admission_rate', 'sat_rw_mid', 'sat_math_mid', 'sat_avg',
-                 'act_avg', 'graduation_rate',
-                 'median_earnings_6yr', 'median_earnings_10yr']
-    finance   = ['avg_cost_of_attendance', 'in_state_tuition_fees', 'out_state_tuition_fees',
-                 'net_price_0_30k', 'net_price_30_48k', 'net_price_48_75k',
-                 'net_price_75_110k', 'net_price_110k_plus', 'median_starting_debt']
-    spec_pref = ['hbcu', 'annh', 'aanipi', 'tribal', 'hispanic',
-                 'men_only', 'women_only', 'online_only']
-    
-    return render_template('college.html',
-                           college=college,
-                           fieldsDict=fieldsDict,
-                           overview=overview,
-                           finance=finance,
-                           academics=academics,
-                           specPref=spec_pref)
+
+    overview  = ["type", "religious_affiliation", "locale", "num_students",
+                 "hbcu", "annh", "aanipi", "tribal", "hispanic",
+                 "men_only", "women_only", "online_only"]
+    academics = ["admission_rate", "sat_rw_mid", "sat_math_mid", "sat_avg",
+                 "act_avg", "graduation_rate",
+                 "median_earnings_6yr", "median_earnings_10yr"]
+    finance   = ["avg_cost_of_attendance", "in_state_tuition_fees", "out_state_tuition_fees",
+                 "net_price_0_30k", "net_price_30_48k", "net_price_48_75k",
+                 "net_price_75_110k", "net_price_110k_plus", "median_starting_debt"]
+    spec_pref = ["hbcu", "annh", "aanipi", "tribal", "hispanic",
+                 "men_only", "women_only", "online_only"]
+
+    return render_template(
+        "college.html",
+        college=college,
+        fieldsDict=fieldsDict,
+        overview=overview,
+        finance=finance,
+        academics=academics,
+        specPref=spec_pref,
+    )
 
 
-app = create_app()  # initialize Flask app using the __init__.py function
-if __name__ == '__main__':
-    # with app.app_context():
-    #     db.create_all()
-    #app.run(debug=True)  # run the Flask app on debug mode
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=False)
+app = create_app()
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
