@@ -17,10 +17,6 @@ load_dotenv()
 #
 # After running, the data is inserted directly into the database.
 
-# TODO:
-# - By default, only update colleges_dynamic since static data rarely changes. Query API accordingly (only dynamic fields) - make a command line argument
-# - Improve error logging (currently logs raw response to out.txt)
-
 key = os.environ['SCORECARD_API_KEY']
 url_base = "https://api.data.gov/ed/collegescorecard/v1/schools/"
 LATEST_YEAR = 2023  # year of latest available data
@@ -128,9 +124,8 @@ def callAPI(year):
             print(f"Fetching page {i + 1}/{total_pages} for {year}")
             all_pages.extend(get_col_data(i, year)['results'])
         except Exception as e:
-            with open("out.txt", "w") as out:
-                print(f"Error on page {i} for year {year}: {e}", file=out)
-                print(get_col_data(i, year), file=out)
+                print(f"Error on page {i} for year {year}: {e}")
+                print(get_col_data(i, year))
 
     college_info = pd.DataFrame(all_pages).fillna(value=np.nan)
     college_info = college_info[
