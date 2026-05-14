@@ -1,16 +1,32 @@
-# Team010-Hawks
-This is a template for CS411 project repository. Please make sure that your title follows the convention: [TeamID]-[YourTeamName]. All TeamID should have a three digit coding (i.e. if you are team 20, you should have `team020` as your ID.). You should also make sure that your url for this repository is [sp26-cs411-team000-teamname.git] so TAs can correctly clone your repository and keep them up-to-date.
+# 🎓 College Picker
 
-Once you setup your project, please remember to submit your team formation to the team form.
+Find colleges that fit you.
 
-## Permission
-You should set the repository to private and add your team members as collaborators.
+College Picker is a smart recommendation website that helps students discover colleges based on their personal priorities like cost, academics, location, campus size, and more. Instead of sorting through endless lists, users get personalized matches tailored to what matters most to them.
 
-## Preparing for your release
-Eash submission should be in it's own [release](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). Release are specific freezes to your repository. You should submit your commit hash on canvas or google sheet. When tagging your stage, please use the tag `stage.x` where x is the number to represent the stage.
+## ✨ What You Can Do
+Get personalized college recommendations based on your preferences
+Rank what matters most (cost, location, outcomes, size, etc.)
+Compare options quickly with easy-to-read match scores
+Search and filter colleges across the U.S.
+Use it instantly with or without creating an account
 
-## Keeping things up-to-date
-You should make sure you keep your project root files up-to-date. Information for each file/folders are explained.
+## 🚀 Why Use College Picker?
 
-## Code Contribution
-Individual code contribution will be used to evaluate individual contribution to the project.
+Most college search tools rely on generic rankings or basic filters. College Picker gives you a more flexible way to explore schools based on your goals, whether you're looking for affordability, prestige, location, student outcomes, or the best overall fit.
+
+## 🔗 Try It Out
+
+[Live Website](https://collegepicker-urf3zp23ga-uc.a.run.app/)
+
+[Demo Video](https://youtu.be/2WHRvEHT0-8)
+
+## 🛠 Built With
+Flask
+MySQL
+Google Cloud
+College Scorecard API
+
+## 👨‍💻 Created By
+
+Artem Khaiet, Kyle Enkhzul, Jimmy Hackney, Zhenzhen Liu
