@@ -3,19 +3,23 @@
 {% block content %}
 <div class="content">
 
-  <h1 class="title is-1 has-text-centered">
-    {% if college['website'] == college['website'] %}
-      <a href="{{ college['website'] }}" target="_blank" rel="noopener noreferrer">
-        <u>{{ college['name'] }}</u>
-      </a>
-    {% else %}
-      {{ college['name'] }}
-    {% endif %}
-  </h1>
+  <div class="is-flex is-justify-content-center">
+    <div>
+    <h1 class="title is-1 has-text-centered">
+      {% if college['website'] == college['website'] %}
+        <a href="{{ college['website'] }}" target="_blank" rel="noopener noreferrer">
+          <u>{{ college['name'] }}</u>
+        </a>
+      {% else %}
+        {{ college['name'] }}
+      {% endif %}
+    </h1>
 
-  <p class="has-text-centered subtitle is-1">
-    {{ college['city'] }}, {{ college['state'] }}
-  </p>
+    <p class="has-text-centered subtitle is-1">
+      {{ college['city'] }}, {{ college['state'] }}
+    </p>
+    </div>
+  </div>
 
   <!-- ===================== OVERVIEW ===================== -->
   <div class="is-flex is-justify-content-center mt-5">
@@ -71,11 +75,13 @@
   </div>
 
   {% if college['finaid_website'] == college['finaid_website'] %}
-  <p class="has-text-centered title is-3">
-    <a href="{{ college['finaid_website'] }}" target="_blank" rel="noopener noreferrer">
-      Net Price Calculator
-    </a>
-  </p>
+  <div class="is-flex is-justify-content-center">
+    <p class="title is-3">
+      <a href="{{ college['finaid_website'] }}" target="_blank" rel="noopener noreferrer">
+        Net Price Calculator
+      </a>
+    </p>
+  </div>
   {% endif %}
 
   <ul class="subtitle is-5">

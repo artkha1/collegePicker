@@ -179,8 +179,7 @@ def search_colleges(
     }
     sort_expr = sort_expr_map.get(sort_key, "cs.name")
 
-    # NULLS LAST emulation for MySQL: order by (expr IS NULL), then expr
-    order_by = f"({sort_expr} IS NULL) ASC, {sort_expr} {sort_dir.upper()}, cs.name ASC"
+    order_by = f"{sort_expr} {sort_dir.upper()} NULLS LAST, cs.name ASC"
 
     year = normalize_search_year(year)
     ld_join = """
@@ -195,8 +194,8 @@ def search_colleges(
             cs.name,
             cs.state,
             cs.type AS type_code,
-            CAST(ld.num_students AS SIGNED) AS num_students,
-            CAST(ld.sat_avg AS SIGNED) AS sat_avg,
+            CAST(ld.num_students AS INTEGER) AS num_students,
+            CAST(ld.sat_avg AS INTEGER) AS sat_avg,
             adm_avg.avg_admission_rate AS admission_rate_avg,
             ld.admission_rate,
             ld.year AS data_year
