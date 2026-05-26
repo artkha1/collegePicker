@@ -157,8 +157,6 @@ def search_colleges(
     Search colleges by name and optional filters.
     """
     term = (name_substring or "").strip()
-    if not term:
-        return []
 
     # Convert percent inputs to 0..1 scale used by the DB.
     adm_min = None if adm_min_pct is None else adm_min_pct / 100.0
@@ -212,7 +210,7 @@ def search_colleges(
             {ld_join}
         ) ld
           ON ld.college_id = cs.college_id
-        WHERE LOWER(cs.name) LIKE LOWER(:pat)
+          WHERE (:pat = '%%' OR LOWER(cs.name) LIKE LOWER(:pat))
           AND (:state IS NULL OR cs.state = :state)
           AND (:ctype IS NULL OR cs.type = :ctype)
           AND (:size_min IS NULL OR ld.num_students >= :size_min)
@@ -224,7 +222,7 @@ def search_colleges(
     """
 
     params = {
-        "pat": f"%{term}%",
+        "pat": f"%{term}%" if term else "%%",
         "state": state or None,
         "ctype": college_type or None,
         "size_min": size_min,
@@ -293,8 +291,6 @@ def count_colleges(
     adm_max_pct: float | None = None,
 ) -> int:
     term = (name_substring or "").strip()
-    if not term:
-        return 0
 
     adm_min = None if adm_min_pct is None else adm_min_pct / 100.0
     adm_max = None if adm_max_pct is None else adm_max_pct / 100.0
@@ -313,7 +309,7 @@ def count_colleges(
             {ld_join}
         ) ld
           ON ld.college_id = cs.college_id
-        WHERE LOWER(cs.name) LIKE LOWER(:pat)
+          WHERE (:pat = '%%' OR LOWER(cs.name) LIKE LOWER(:pat))
           AND (:state IS NULL OR cs.state = :state)
           AND (:ctype IS NULL OR cs.type = :ctype)
           AND (:size_min IS NULL OR ld.num_students >= :size_min)
@@ -323,7 +319,7 @@ def count_colleges(
     """
 
     params = {
-        "pat": f"%{term}%",
+        "pat": f"%{term}%" if term else "%%",
         "state": state or None,
         "ctype": college_type or None,
         "size_min": size_min,
@@ -363,6 +359,7 @@ def _parse_float(value: str | None) -> float | None:
 @search.route("/search", methods=["GET"])
 def index():
     q = request.args.get("q", "").strip()
+    searched = "q" in request.args
     state = (request.args.get("state") or "").strip() or None
     college_type = _parse_int(request.args.get("type"))
 
@@ -400,9 +397,7 @@ def index():
             adm_min_pct=adm_min_pct,
             adm_max_pct=adm_max_pct,
         )
-        if q
-        else 0
-    )
+    ) if searched else 0
 
     results = (
         search_colleges(
@@ -419,11 +414,9 @@ def index():
             limit=page_size,
             offset=offset,
         )
-        if q
-        else []
-    )
+    ) if searched else []
 
-    total_pages = max(1, (total + page_size - 1) // page_size) if q else 0
+    total_pages = max(1, ((total + page_size - 1) if searched else 0) // page_size)
     if total_pages and page > total_pages:
         page = total_pages
 
@@ -433,6 +426,7 @@ def index():
     return render_template(
         "search.html",
         q=q,
+        searched=searched,
         results=results,
         total=total,
         page=page,

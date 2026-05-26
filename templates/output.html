@@ -1,19 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
 
+{% if df.shape[0] > 0 %}
+    <h1 class="title is-1 has-text-centered">Here are your top matches! Click on each college to find out more.</h1>
 
-{% if df.shape[0]>0 %}
+    {% for index, college in df.iterrows() %}
+        <div class="college-result {% if index >= 5 %}extra-result{% endif %}" {% if index >= 5 %}style="display:none"{% endif %}>
+            <h1 class="title is-2">{{ index+1 }}. <a href="{{ url_for('main.college', college_id=index) }}">{{ college['name'] }}</a></h1>
+            <h2 class="subtitle has-text-grey-darker is-3">{{ college['Match'] }}% Match</h2>
+        </div>
+    {% endfor %}
 
-	<h1 class="title is-1 has-text-centered">Here are your top matches! Click on each college to find out more.</h1>
-
-
-	{% for index,college in df.iterrows() %}
-		<h1 class="title is-2">{{index+1}}. <a href={{url_for('main.college',college_id=index)}}> {{college['name']}} </a> </h1>
-		<h2 class="subtitle has-text-grey-darker is-3">{{college['Match']}}% Match</h2>
-
-	{% endfor %}
+    {% if df.shape[0] > 5 %}
+        <div class="has-text-centered mt-4">
+            <button class="button is-link is-light" id="showMoreBtn">Show more ({{ df.shape[0] - 5 }} more matches)</button>
+        </div>
+    {% endif %}
 
 {% else %}
-	<h1 class="title is-1 has-text-centered">There are no colleges that match your preferences. Please go back and choose different criteria.</h1>
+    <h1 class="title is-1 has-text-centered">There are no colleges that match your preferences. Please go back and choose different criteria.</h1>
 {% endif %}
+
+<script>
+    const btn = document.getElementById('showMoreBtn');
+    if (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.extra-result').forEach(el => el.style.display = '');
+            btn.style.display = 'none';
+        });
+    }
+</script>
+
 {% endblock %}

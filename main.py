@@ -133,9 +133,17 @@ def getStarted():
         # it cheap enough to do inline.
         purge_anonymous_users(ttl_hours=24)
 
-        # Prepopulate form for returning logged-in users.
+        # Prepopulate form for returning users
         if current_user.is_authenticated:
             _prepopulate_form(form, current_user)
+        else:
+            uid = session.get("response_id")
+            if uid:
+                anon = db.session.get(User, uid)
+                if anon:
+                    _prepopulate_form(form, anon)
+                else:
+                    session.pop("response_id", None)  # stale ID, clear it
 
         return render_template("getStarted.html", form=form)
 
@@ -171,27 +179,26 @@ def _top_colleges():
     if prefs is None:
         return None
 
-    top5 = calc(**prefs, user_id=uid).nlargest(5, "Score").reset_index()
-    return top5
+    return calc(**prefs, user_id=uid).nlargest(20, "Score").reset_index()
 
 
 @main.route("/output")
 def output():
-    top5 = _top_colleges()
-    if top5 is None:
+    top_colleges = _top_colleges()
+    if top_colleges is None:
         flash("Please fill out the questionnaire first.")
         return redirect(url_for("main.getStarted"))
-    return render_template("output.html", df=top5)
+    return render_template("output.html", df=top_colleges)
 
 
 @main.route("/college/<int:college_id>/")
 def college(college_id):
-    top5 = _top_colleges()
-    if top5 is None:
+    top_colleges = _top_colleges()
+    if top_colleges is None:
         flash("Please fill out the questionnaire first.")
         return redirect(url_for("main.getStarted"))
 
-    college = top5.iloc[college_id]
+    college = top_colleges.iloc[college_id]
 
     fieldsDict = {
         "name":                   "Name",

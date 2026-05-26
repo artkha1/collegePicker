@@ -134,10 +134,10 @@
     </div>
   </form>
 
-  {% if q %}
+  {% if searched %}
     {% if results %}
       <p class="mb-3">
-        {{ total }} result{% if total != 1 %}s{% endif %} for &ldquo;{{ q }}&rdquo;
+        {{ total }} result{% if total != 1 %}s{% endif %}{% if q %} for &ldquo;{{ q }}&rdquo;{% endif %}
         {% if total_pages and total_pages > 1 %}
           — Page {{ page }} of {{ total_pages }}
         {% endif %}
@@ -324,10 +324,10 @@
         </nav>
       {% endif %}
     {% else %}
-      <p class="notification is-light">No colleges found for &ldquo;{{ q }}&rdquo;.</p>
+      <p class="notification is-light">No colleges found{% if q %} for &ldquo;{{ q }}&rdquo;{% endif %}.</p>
     {% endif %}
   {% else %}
-    <p class="has-text-grey">Enter a name above to see matching colleges.</p>
+    <p class="has-text-grey">Use the filters above or enter a name to search colleges.</p>
   {% endif %}
 </div>
 

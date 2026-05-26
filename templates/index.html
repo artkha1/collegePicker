@@ -3,10 +3,19 @@
 {% block content %}
 <div class="container has-text-centered">
   <h1 class="title">
-      Welcome To College Picker!
+    Welcome to College Picker
   </h1>
   <h2 class="subtitle">
-      Having trouble choosing a college? College Picker is here for you! Please sign up or log in to get started.
+    Answer a few questions and we'll match you with colleges that fit your priorities - no account needed.
   </h2>
+  <div class="content">
+    <p>
+      <a href="{{ url_for('main.getStarted') }}"><strong>Get Started</strong></a> to get personalized college recommendations,
+      or <a href="{{ url_for('search.index') }}"><strong>Search</strong></a> to browse colleges directly and explore how their stats have changed over the years.
+    </p>
+    <p class="has-text-grey">
+      Want to save your answers and come back later? <a href="{{ url_for('auth.signup') }}">Create a free account</a> or <a href="{{ url_for('auth.login') }}">log in</a> to pick up where you left off.
+    </p>
+  </div>
 </div>
 {% endblock %}
