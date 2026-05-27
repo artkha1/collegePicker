@@ -68,15 +68,15 @@
    <div class="field">
        <div class="control">
             {{ form.satMath.label(class_="label") }}
-            {{ form.satMath(class_="input is-info is-rounded",placeholder="200-800",style="width: 10%;") }}
+            {{ form.satMath(class_="input is-info is-rounded", placeholder="200-800", style="width: 10%;", type="number", min="200", max="800", step="10", id="satMath") }}
         </div>
     </div>
 
    <br>
-   <div class="field">
-       <div class="control">
+    <div class="field" id="satEngField" style="display: none;">
+        <div class="control">
             {{ form.satEng.label(class_="label") }}
-            {{ form.satEng(class_="input is-info is-rounded",placeholder="200-800",style="width: 10%;") }}
+            {{ form.satEng(class_="input is-info is-rounded", placeholder="200-800", style="width: 10%;", type="number", min="200", max="800", step="10") }}
         </div>
     </div>
 
@@ -224,6 +224,34 @@
             	document.getElementById("stateImp").style.display = 'block';
             }else{
             	document.getElementById("stateImp").style.display = 'none';
+            }
+            
+            // SAT English: show once Math has a value, snap both to step of 10
+            const satMathInput = document.getElementById('satMath');
+
+            function snapToStep(input) {
+                let val = parseInt(input.value);
+                if (!isNaN(val)) {
+                    val = Math.round(val / 10) * 10;
+                    val = Math.min(800, Math.max(200, val));
+                    input.value = val;
+                }
+            }
+
+            function updateSatEng() {
+                const engField = document.getElementById('satEngField');
+                engField.style.display = satMathInput.value.trim() !== '' ? 'block' : 'none';
+            }
+
+            if (satMathInput) {
+                satMathInput.addEventListener('input', updateSatEng);
+                satMathInput.addEventListener('change', function () { snapToStep(this); });
+                const satEngInput = document.querySelector('[name="satEng"]');
+                if (satEngInput) {
+                    satEngInput.addEventListener('change', function () { snapToStep(this); });
+                }
+                // On page load, show satEng if Math is already populated (prepopulated form)
+                updateSatEng();
             }
         };
  

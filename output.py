@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from __init__ import db
 from models import GET_TOP_COLLEGES_SQL
+from form import sizeChoices, settingChoices, religionChoices, specPrefChoices, regionChoices, stateChoices
 
 
 def load_college_data(user_id: int) -> pd.DataFrame:
@@ -195,6 +196,89 @@ def calc(rels, sizes, majors, settings, regions, states, specPrefs,
     # Match percentage
     collegeInfo['Match'] = (collegeInfo['Score'] / maxScore * 100).round(1).clip(lower=0)
 
+    # --- Match info (built before formatting clobbers raw values) ---
+    size_label    = dict(sizeChoices)
+    setting_label = dict(settingChoices)
+    rel_label     = dict(religionChoices)
+    spec_label    = dict(specPrefChoices)  # code -> label string
+    region_label = dict(regionChoices)  # {1: 'U.S. Service Schools', 2: 'New England...', ...}
+    state_label  = dict(stateChoices)   # {code: 'State Name', ...}
+    spec_col_map = {1: 'hbcu', 2: 'annh', 3: 'aanipi', 4: 'hispanic',
+                5: 'tribal', 6: 'men_only', 7: 'women_only', 8: 'online_only'}
+    
+
+    def build_match_info(row):
+        info = {}
+
+        if sizes:
+            user_codes = [s.code for s in sizes]
+            c = row.get('sizeCode')
+            info['size'] = {
+                'college_val': size_label.get(c, 'Unknown'),
+                'matches': [size_label[u] for u in user_codes if u == c],
+                'misses':  [size_label[u] for u in user_codes if u != c],
+            }
+
+        if settings:
+            user_codes = [s.code for s in settings]
+            c = row.get('settingCode')
+            info['setting'] = {
+                'college_val': setting_label.get(c, 'Unknown'),
+                'matches': [setting_label[u] for u in user_codes if u == c],
+                'misses':  [setting_label[u] for u in user_codes if u != c],
+            }
+
+        if rels:
+            user_codes = [r.code for r in rels]
+            c = int(row.get('rel_code', 4))
+            info['religion'] = {
+                'college_val': rel_label.get(c, 'Unknown'),
+                'matches': [rel_label[u] for u in user_codes if u == c],
+                'misses':  [rel_label[u] for u in user_codes if u != c],
+            }
+        
+        if regions:
+            user_codes = [r.code - 1 for r in regions]  # same -1 offset used in scoring
+            c = row.get('region')
+            info['region'] = {
+                'college_val': next((region_label[r.code] for r in regions if r.code - 1 == c), str(c)),
+                'matches': [region_label[r.code] for r in regions if r.code - 1 == c],
+                'misses':  [region_label[r.code] for r in regions if r.code - 1 != c],
+            }
+
+        if states:
+            user_names = [s.name for s in states]
+            c = row.get('state')
+            info['state'] = {
+                'college_val': c,
+                'matches': [s for s in user_names if s == c],
+                'misses':  [s for s in user_names if s != c],
+            }
+
+        if specPrefs:
+            spec_matches, spec_misses = [], []
+            for pref in specPrefs:
+                col   = spec_col_map[pref.code]
+                label = spec_label[pref.code]   # from specPrefChoices
+                val = row.get(col)
+                if val == 1 or val is True:
+                    spec_matches.append(label)
+                else:
+                    spec_misses.append(label)
+            info['specPrefs'] = {'college_val': None, 'matches': spec_matches, 'misses': spec_misses}
+
+        if majors:
+            matched = int(row.get('matched_major_count') or 0)
+            total   = len(majors)
+            info['majors'] = {
+                'college_val': f'{matched} of {total} selected majors offered',
+                'matches': [f'{matched} of {total} selected majors offered'] if matched == total else [],
+                'misses':  [f'Only {matched} of {total} selected majors offered'] if matched < total else [],
+            }
+
+        return info
+
+    collegeInfo['match_info'] = collegeInfo.apply(build_match_info, axis=1)
     
     # --- Formatting (display only, after all scoring) ---
     # Format columns

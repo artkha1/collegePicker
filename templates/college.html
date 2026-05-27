@@ -21,6 +21,41 @@
     </div>
   </div>
 
+ <!-- ===================== YOUR MATCH ===================== -->
+{% if match_info %}
+<div class="is-flex is-justify-content-center mt-5">
+  <div class="icon-text">
+    <span class="icon is-large"><i class="fa-solid fa-list-check fa-2x"></i></span>
+    <span><h2 class="title is-2">Your Match</h2></span>
+  </div>
+</div>
+
+<ul class="subtitle is-5">
+  {% for key in ['size', 'setting', 'religion', 'region', 'state', 'majors', 'specPrefs'] %}
+    {% if match_info[key] is defined %}
+      {% set item = match_info[key] %}
+      <li>
+        {% if key == 'size' %}<b>Size:</b>
+        {% elif key == 'setting' %}<b>Setting:</b>
+        {% elif key == 'religion' %}<b>Religious affiliation:</b>
+        {% elif key == 'majors' %}<b>Majors:</b>
+        {% elif key == 'region' %}<b>Region:</b>
+        {% elif key == 'state' %}<b>State:</b>
+        {% elif key == 'specPrefs' %}<b>Special preferences:</b>
+        {% endif %}
+        {% if item.college_val %}{{ item.college_val }} — {% endif %}
+        {% for m in item.matches %}
+          <span class="tag is-success ml-1">✓ {{ m }}</span>
+        {% endfor %}
+        {% for m in item.misses %}
+          <span class="tag is-danger ml-1">✗ {{ m }}</span>
+        {% endfor %}
+      </li>
+    {% endif %}
+  {% endfor %}
+</ul>
+{% endif %}
+
   <!-- ===================== OVERVIEW ===================== -->
   <div class="is-flex is-justify-content-center mt-5">
     <div class="icon-text">

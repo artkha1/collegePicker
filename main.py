@@ -250,6 +250,7 @@ def college(college_id):
     return render_template(
         "college.html",
         college=college,
+        match_info=college.get("match_info") or {},
         fieldsDict=fieldsDict,
         overview=overview,
         finance=finance,
