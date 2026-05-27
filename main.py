@@ -6,19 +6,9 @@ import os
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user
-from sqlalchemy import text
 
 from __init__ import db, create_app
-from form import (
-    Questionnaire,
-    majorChoices,
-    regionChoices,
-    religionChoices,
-    settingChoices,
-    sizeChoices,
-    specPrefChoices,
-    stateChoices,
-)
+from form import Questionnaire
 from models import User, get_user_prefs, purge_anonymous_users
 from output import calc
 
@@ -82,7 +72,7 @@ def _prepopulate_form(form: Questionnaire, user: User) -> None:
 def _save_prefs_from_form(user: User, form: Questionnaire) -> None:
     """
     Persist submitted form data to the User model.
-    Replaces the old SaveUserPreferences stored procedure.
+    Replaces the old SaveUserPreferences stored procedure from CS 411.
     """
     # Scalar fields
     user.rel_imp     = form.relImp.data
@@ -179,7 +169,10 @@ def _top_colleges():
     if prefs is None:
         return None
 
-    return calc(**prefs, user_id=uid).nlargest(20, "Score").reset_index()
+    result = calc(**prefs, user_id=uid)
+    if result.empty:
+        return result
+    return result.nlargest(20, "Score").reset_index()
 
 
 @main.route("/output")
@@ -227,10 +220,10 @@ def college(college_id):
         "avg_cost_of_attendance": "Average cost of attendance",
         "in_state_tuition_fees":  "In-state tuition and fees",
         "out_state_tuition_fees": "Out-of-state tuition and fees",
-        "net_price_0_30k":        "Net price — $0–$30,000 family income",
-        "net_price_30_48k":       "Net price — $30,001–$48,000 family income",
-        "net_price_48_75k":       "Net price — $48,001–$75,000 family income",
-        "net_price_75_110k":      "Net price — $75,001–$110,000 family income",
+        "net_price_0_30k":        "Net price — $0-$30,000 family income",
+        "net_price_30_48k":       "Net price — $30,001-$48,000 family income",
+        "net_price_48_75k":       "Net price — $48,001-$75,000 family income",
+        "net_price_75_110k":      "Net price — $75,001-$110,000 family income",
         "net_price_110k_plus":    "Net price — $110,000+ family income",
         "median_starting_debt":   "Median starting debt",
     }

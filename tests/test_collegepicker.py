@@ -14,12 +14,10 @@ No real Postgres instance is needed; all DB tests use SQLite in-memory
 via an app fixture that overrides SQLALCHEMY_DATABASE_URI.
 """
 
-import json
 import os
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
 import pytest
 from werkzeug.security import generate_password_hash
@@ -278,7 +276,7 @@ class TestNormalizeSearchYear:
 # ---------------------------------------------------------------------------
 
 class TestUserModel:
-    def test_create_anonymous(self, make_user, db):
+    def test_create_anonymous(self, make_user):
         u = make_user()
         assert u.id is not None
         assert u.email is None
@@ -311,7 +309,7 @@ class TestUserModel:
 
 
 class TestGetUserPrefs:
-    def test_returns_none_for_missing_id(self, app, db):
+    def test_returns_none_for_missing_id(self, app):
         with app.app_context():
             from models import get_user_prefs
             assert get_user_prefs(999999) is None
@@ -410,7 +408,6 @@ class TestAuthRoutes:
             }, follow_redirects=True)
             assert resp.status_code == 200
 
-            from models import User
             u = db.session.execute(
                 __import__("sqlalchemy").text("SELECT id FROM users WHERE email = :e"),
                 {"e": "newuser@example.com"}
@@ -492,9 +489,9 @@ def _make_college_df(n=10, **overrides):
         "city":                  ["Springfield"] * n,
         "state":                 ["IL"] * n,
         "region":                [4] * n,
-        "locale":                [12] * n,        # Midsize City → setting 1
+        "locale":                [12] * n,        # Midsize City, setting 1
         "type":                  [1] * n,
-        "religious_affiliation": [30] * n,        # Roman Catholic → rel_code 1
+        "religious_affiliation": [30] * n,        # Roman Catholic, rel_code 1
         "online_only":           [False] * n,
         "hbcu":                  [False] * n,
         "annh":                  [False] * n,
@@ -569,8 +566,8 @@ class TestCalcScoring:
     def test_size_filter_removes_non_matching(self):
         """sizeImp=11 (hard filter) with Large-only should drop small colleges."""
         df = _make_college_df(n=5)
-        df.loc[:2, "num_students"] = 20000  # first 3 → Large (code 1)
-        df.loc[3:, "num_students"] = 1000   # last 2 → Small (code 3)
+        df.loc[:2, "num_students"] = 20000  # first 3 = Large (code 1)
+        df.loc[3:, "num_students"] = 1000   # last 2 = Small (code 3)
         result = self._run_calc(
             df,
             sizes=[_make_pref(1)],  # Large only
@@ -592,7 +589,7 @@ class TestCalcScoring:
 
     def test_rel_filter_removes_non_matching(self):
         df = _make_college_df(n=3)
-        df.loc[2, "religious_affiliation"] = 99  # → rel_code 3 (Other Religious)
+        df.loc[2, "religious_affiliation"] = 99  # rel_code 3 (Other Religious)
         result = self._run_calc(
             df,
             rels=[_make_pref(1)],   # Roman Catholic only

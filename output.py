@@ -10,7 +10,7 @@ from form import sizeChoices, settingChoices, religionChoices, specPrefChoices, 
 def load_college_data(user_id: int) -> pd.DataFrame:
     """
     Run the GET_TOP_COLLEGES_SQL raw-SQL query for this user and return
-    the results as a DataFrame.  Replaces the old stored-procedure callproc.
+    the results as a DataFrame. Replaces the old stored-procedure callproc from CS 411.
     """
     with db.engine.connect() as conn:
         result = conn.execute(
@@ -32,10 +32,13 @@ def load_college_data(user_id: int) -> pd.DataFrame:
 
 
 def calc(rels, sizes, majors, settings, regions, states, specPrefs,
-         relImp, sizeImp, allMajors, satMath, satEng, act,
+         relImp, sizeImp, satMath, satEng, act,
          setImp, regImp, stImp, income, user_id):
 
     collegeInfo = load_college_data(user_id)
+
+    if collegeInfo.empty:
+        return collegeInfo
 
     collegeInfo['Score'] = 0
     maxScore = 0
@@ -87,7 +90,7 @@ def calc(rels, sizes, majors, settings, regions, states, specPrefs,
             collegeInfo.loc[collegeInfo['sizeCode'].isin(user_size_codes), 'Score'] += sizeImp * 10
             maxScore += sizeImp * 10
 
-    # Majors - soft scoring (hard filtering already done by stored procedure)
+    # Majors - soft scoring (hard filtering already done by SQL query)
     if len(majors) > 0:
         user_major_ids = set(m.code for m in majors)
         matched = collegeInfo['matched_major_count'].fillna(0)
@@ -107,19 +110,25 @@ def calc(rels, sizes, majors, settings, regions, states, specPrefs,
             collegeInfo.loc[collegeInfo['settingCode'].isin(user_setting_codes), 'Score'] += setImp * 10
             maxScore += setImp * 10
 
-    # Region scoring (hard filter already applied in stored procedure when regImp=11)
-    if len(regions) > 0 and regImp != 11:
+    # Region scoring
+    if len(regions) > 0:
         user_region_codes = [r.code - 1 for r in regions]
-        collegeInfo.loc[collegeInfo['region'].isin(user_region_codes), 'Score'] += regImp * 10
-        maxScore += regImp * 10
+        if regImp == 11:
+            collegeInfo = collegeInfo[collegeInfo['region'].isin(user_region_codes)]
+        else:
+            collegeInfo.loc[collegeInfo['region'].isin(user_region_codes), 'Score'] += regImp * 10
+            maxScore += regImp * 10
 
-    # State scoring (hard filter already applied in SP when stImp=11)
-    if len(states) > 0 and stImp != 11:
+    # State scoring
+    if len(states) > 0:
         user_state_names = [s.name for s in states]
-        collegeInfo.loc[collegeInfo['state'].isin(user_state_names), 'Score'] += stImp * 10
-        maxScore += stImp * 10
+        if stImp == 11:
+            collegeInfo = collegeInfo[collegeInfo['state'].isin(user_state_names)]
+        else:
+            collegeInfo.loc[collegeInfo['state'].isin(user_state_names), 'Score'] += stImp * 10
+            maxScore += stImp * 10
 
-    # Special preferences were already handled in SP
+    # Special preferences were already handled in SQL query
 
     # Test scores
     if satMath is None:

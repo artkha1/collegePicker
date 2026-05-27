@@ -11,7 +11,7 @@ User data:
     User              → users
         Multi-select preferences (religions, sizes, settings, regions,
         states, specPrefs, user_majors) are stored as JSONB arrays
-        instead of 7 separate child tables.
+        instead of 7 separate child tables like in the beta version.
 
 Raw SQL:
     GET_TOP_COLLEGES_SQL  — the main college-filtering query.
@@ -146,10 +146,8 @@ class User(UserMixin, db.Model):
 # Parameters (passed as a dict to SQLAlchemy text()):
 #   :user_id        — users.id for the current visitor
 #   :all_majors     — boolean; True → college must offer every selected major
-#   :region_imp     — importance score; 11 → hard filter on region
-#   :state_imp      — importance score; 11 → hard filter on state
 #
-# Otjer imp fields are handles in output.py because they require re=mapping to different numbers.
+# Other imp fields are handles in output.py because they require re=mapping to different numbers.
 # The query returns one row per college (most recent year of dynamic data)
 # with a matched_major_count column used for soft scoring in output.py.
 # ---------------------------------------------------------------------------
@@ -187,17 +185,6 @@ major_filter AS (
             FROM users
             WHERE id = :user_id
         )
-),
-
--- -----------------------------------------------------------------------
--- CTE 2: user_prefs
--- Reads the current user's hard-filter importance flags in one place so
--- the main query can reference them without repeating the subquery.
--- -----------------------------------------------------------------------
-user_prefs AS (
-    SELECT region_imp, state_imp, spec_prefs
-    FROM users
-    WHERE id = :user_id
 )
 
 -- -----------------------------------------------------------------------
@@ -268,28 +255,6 @@ WHERE
     (
         (SELECT jsonb_array_length(sel_majors) FROM users WHERE id = :user_id) = 0
         OR mf.college_id IS NOT NULL
-    )
-
-    -- Hard filter: region (only when region_imp = 11)
-    AND (
-        (SELECT region_imp FROM user_prefs) < 11
-        OR cs.region IN (
-            SELECT (elem::int) - 1          -- codes are 1-indexed in form.py
-            FROM jsonb_array_elements_text(
-                (SELECT regions FROM users WHERE id = :user_id)
-            ) AS elem
-        )
-    )
-
-    -- Hard filter: state (only when state_imp = 11)
-    AND (
-        (SELECT state_imp FROM user_prefs) < 11
-        OR cs.state IN (
-            SELECT elem
-            FROM jsonb_array_elements_text(
-                (SELECT states FROM users WHERE id = :user_id)
-            ) AS elem
-        )
     )
 
     -- Hard filters: special preferences (NOT EXISTS for each code)
@@ -369,7 +334,6 @@ def get_user_prefs(user_id: int) -> dict[str, Any] | None:
         # Scalar fields (match calc() parameter names)
         "relImp":    user.rel_imp,
         "sizeImp":   user.size_imp,
-        "allMajors": bool(user.all_majors) if user.all_majors is not None else None,
         "satMath":   user.sat_math,
         "satEng":    user.sat_eng,
         "act":       user.act,

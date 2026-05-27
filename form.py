@@ -1,7 +1,7 @@
 from wtforms import Form, validators, SelectField, SelectMultipleField, IntegerField, BooleanField
 
-#create all the needed lists for the select fields
-ratings = [(i,str(i)) for i in range(1,11)] #choices 1-10 for importance. [(1,1),(2,2), etc.]
+# create all the needed lists for the select fields
+ratings = [(i,str(i)) for i in range(1,11)]  # choices 1-10 for importance. [(1,"1"),(2,"2"), etc.]
 ratings.append((11,"Extremely Important - only show me colleges that match my selection"))
 
 religionChoices = [(1,'Roman Catholic'), (2,'Other Christian'), (3,'Other Religious'), (4,'Non-secular')]
@@ -31,7 +31,7 @@ specPrefChoices = [(1,'Historically Black and/or predominantly Black'),(2,'Alask
                 (5,'Tribal'),(6,'Male-only'),(7,'Female-only'),(8,'Online-only')]
 
 class Questionnaire(Form):
-    #all question fields. coerce=int makes it so that the output is an integer, not a string
+    # all question fields. coerce=int casts the output from string to int
     relAffil = SelectMultipleField("What do you want your college's religious affiliation to be?",choices=religionChoices,coerce=int)
     relImp = SelectField("On a scale of 1-10, how important is the college's religious affiliation to you?",choices = ratings,coerce=int)
     size = SelectMultipleField("What do you want your college's size to be?",choices=sizeChoices,coerce=int)

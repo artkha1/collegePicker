@@ -1,4 +1,4 @@
-.venvlatest
+.venv
 .env
 __pycache__
 *.pyc

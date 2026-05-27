@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # This script fetches data from the College Scorecard API and saves it to the database.
-# It takes a pretty long time to run and there's a limit of 1000 requests per hour
-# (one run is about 60 requests per year), so it shouldn't be run all the time.
+# There's a limit of 1000 requests per hour (one run is about 60 requests per year),
+# so it shouldn't be run all the time.
 # Run quarterly or when CollegeScorecard is updated:
 # https://collegescorecard.ed.gov/data/changelog/
 
@@ -20,7 +20,7 @@ key = os.environ['SCORECARD_API_KEY']
 url_base = "https://api.data.gov/ed/collegescorecard/v1/schools/"
 LATEST_YEAR = 2023  # year of latest available data
 
-# Fields that never change year-over-year — only fetched for LATEST_YEAR.
+# Fields that never change year-over-year, only fetched for LATEST_YEAR.
 STATIC_FIELDS = [
     'id',
     'school.name',
@@ -83,7 +83,7 @@ STATIC_FIELDS = [
     'latest.academics.program_percentage.history',
 ]
 
-# Fields that vary year-over-year — fetched for every year.
+# Fields that vary year-over-year, fetched for every year.
 # Uses "latest." prefix which gets rewritten to the target year by fields_for_year().
 DYNAMIC_FIELDS = [
     'id',
@@ -173,7 +173,7 @@ def get_col_data(page, year, field_list):
         "school.operating": "1",
         "fields": fields_for_year(field_list, year),
         "page": page,
-        "per_page": 100,
+        "per_page": 100,  # maximum value
         "api_key": key,
     }
     resp = requests.get(url=url_base, params=p)
@@ -227,7 +227,7 @@ def callAPI(year, field_list, max_workers=10):
     college_info = pd.DataFrame(all_rows).fillna(value=np.nan)
     college_info = college_info[
         (college_info['school.institutional_characteristics.level'] == 1)
-    ].dropna(thresh=max(10, len(field_list) // 2))
+    ].dropna(thresh=max(10, len(field_list) // 2))  # remove colleges that have more than half of the fields missing
     college_info = college_info.replace("", np.nan)
     return college_info
 
@@ -262,7 +262,7 @@ def build_dynamic(df, year):
     def net_price(bracket):
         pub = f"{prefix}.cost.net_price.public.by_income_level.{bracket}"
         prv = f"{prefix}.cost.net_price.private.by_income_level.{bracket}"
-        return df[prv].where(df[prv].notna(), df[pub])
+        return df[prv].where(df[prv].notna(), df[pub])  # keep either private or public depending on what's missing
 
     dynamic = pd.DataFrame()
     dynamic["college_id"] = df["id"]
@@ -298,8 +298,9 @@ def build_majors_and_college_majors(df):
     suffix_to_id = {suffix: name_to_id[name] for suffix, name in MAJOR_MAP.items()}
 
     major_cols = [col for col in df.columns if "program_percentage" in col]
+    # melt - turn columns into values
     long = df[["id"] + major_cols].melt(id_vars="id", var_name="major_col", value_name="percentage")
-    long = long[long["percentage"] > 0]
+    long = long[long["percentage"] > 0]  # only keep colleges that offer that major
     long["suffix"] = long["major_col"].str.split("program_percentage.").str[-1]
     long["major_id"] = long["suffix"].map(suffix_to_id)
     long = long.dropna(subset=["major_id"])
@@ -323,7 +324,7 @@ def get_db_connection():
         user=os.environ["DB_USER"],
         password=os.environ["DB_PASSWORD"],
         dbname=os.environ["DB_NAME"],
-    )
+    )  # IPv4
 
 
 def clean_value(value):
@@ -396,7 +397,7 @@ def process_year(year):
         print(f"Fetching dynamic data for {year}...")
         df = callAPI(year, DYNAMIC_FIELDS)
 
-    dynamic = build_dynamic(df, year)
+    dynamic = build_dynamic(df, year)  # build dynamic for all
     print(f"Inserting {len(dynamic)} rows for {year} into colleges_dynamic...")
     insert_dataframe(dynamic, "colleges_dynamic")
     print(f"[{year}] done.")
