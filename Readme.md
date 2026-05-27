@@ -17,7 +17,7 @@ Most college search tools rely on generic rankings or basic filters. College Pic
 
 ## 🔗 Try It Out
 
-[Live Website](https://collegepicker-urf3zp23ga-uc.a.run.app/)
+[Live Website](https://collegepicker-688213352246.us-central1.run.app)
 
 ## 🛠 Built With
 Flask
