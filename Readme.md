@@ -19,14 +19,12 @@ Most college search tools rely on generic rankings or basic filters. College Pic
 
 [Live Website](https://collegepicker-urf3zp23ga-uc.a.run.app/)
 
-[Demo Video](https://youtu.be/2WHRvEHT0-8)
-
 ## 🛠 Built With
 Flask
-MySQL
+Supabase
 Google Cloud
 College Scorecard API
 
 ## 👨‍💻 Created By
 
-Artem Khaiet, Kyle Enkhzul, Jimmy Hackney, Zhenzhen Liu
+Originally created by Artem Khaiet as part of an internship at Aneyeon, Inc. Revamped for CS 411 (Database Systems) at UIUC with contributions from Kyle Enkhzul, Jimmy Hackney, Zhenzhen Liu. Polished as a personal project and migrated to Supabase by Artem Khaiet.
