@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container has-text-centered">
+  <p class="title is-1 has-text-grey-light">500</p>
+  <h1 class="title">Something went wrong</h1>
+  <p class="subtitle">An unexpected error occurred on our end. Try again in a moment.</p>
+  <a href="{{ url_for('main.index') }}" class="button is-link mt-4">Go home</a>
+</div>
+{% endblock %}

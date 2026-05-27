@@ -32,6 +32,36 @@
   tr.college-row {
     cursor: pointer;
   }
+
+  @media (max-width: 768px) {
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: calc(100vw - 2rem);
+    }
+    table {
+        min-width: 600px; /* let table scroll internally rather than pushing the page */
+    }
+    .columns {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .column {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    .field.has-addons {
+        flex-wrap: nowrap;
+        max-width: 100%;
+    }
+    .field.has-addons .control.is-expanded {
+        min-width: 0;
+        flex-shrink: 1;
+    }
+    #filtersBlock {
+        overflow-x: hidden;
+    }
+  }
 </style>
 
 <div class="container">
@@ -52,8 +82,8 @@
     </div>
 
     <div id="filtersBlock" class="box mt-3" style="display: none;">
-      <div class="columns is-variable is-4">
-        <div class="column">
+      <div class="columns is-variable is-4 is-multiline">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label">Year</label>
           <div class="control">
             <div class="select is-fullwidth">
@@ -66,7 +96,7 @@
           </div>
         </div>
 
-        <div class="column">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label">State</label>
           <div class="control">
             <div class="select is-fullwidth">
@@ -80,7 +110,7 @@
           </div>
         </div>
 
-        <div class="column">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label">Type</label>
           <div class="control">
             <div class="select is-fullwidth">
@@ -94,7 +124,7 @@
           </div>
         </div>
 
-        <div class="column">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label">Size range</label>
           <div class="field is-grouped is-align-items-center">
             <div class="control is-expanded">
@@ -109,7 +139,7 @@
           </div>
         </div>
 
-        <div class="column">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label">Admission rate range</label>
           <div class="field is-grouped is-align-items-center">
             <div class="control is-expanded has-icons-right">

@@ -2,7 +2,7 @@ import os
 import urllib.parse
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, render_template
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
 
@@ -53,5 +53,21 @@ def create_app() -> Flask:
 
     from search import search as search_blueprint
     app.register_blueprint(search_blueprint)
+
+    # ------------------------------------------------------------------
+    # Error handlers
+    # ------------------------------------------------------------------
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("404.html"), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        app.logger.error(f"500 error: {e}")
+        return render_template("500.html"), 500
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        return render_template("404.html"), 403  # show 404 to avoid leaking route info
 
     return app

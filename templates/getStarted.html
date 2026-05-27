@@ -1,9 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
+
 <h1 class="title">
-    Hi! To see your college matches, please answer the questions below. If you don't know an answer or simply have no preference, leave that question blank. Note that multiple options can be selected for each of the questions. To select multiple options or to deselect, hold down ctrl.
+    Hi! To see your college matches, please answer the questions below. If you don't know an answer or simply have no preference, leave that question blank. Note that multiple options can be selected for each of the questions. To select multiple options, hold Ctrl (Windows) or Cmd (Mac). On mobile, tap each option individually.
 </h1>
+
+<style>
+    @media (max-width: 768px) {
+    .select, .select select, .select select[multiple] {
+        width: 100% !important;
+        max-width: calc(100vw - 2rem) !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+        overflow-x: auto !important;
+    }
+    .select.is-multiple {
+        width: 100% !important;
+        max-width: calc(100vw - 2rem) !important;
+        overflow-x: auto !important;
+    }
+    .field, .control {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+    .input {
+        width: 100% !important;
+        max-width: calc(100vw - 2rem) !important;
+        box-sizing: border-box;
+    }
+    }
+</style>
 
 <form method="POST" action="/getStarted" role="form">
     {{ form.csrf_token }}
@@ -11,7 +39,7 @@
     <div class="field">
         <div class ="control">
             {{ form.relAffil.label(class_="label") }}
-            <div class = "select is-multiple" onclick="optionSelected()">
+            <div class = "select is-multiple">
             {{ form.relAffil(class_="select is-multiple",size=3) }}
             </div>
         </div>
@@ -31,7 +59,7 @@
      <div class="field">
         <div class ="control">
             {{ form.size.label(class_="label") }}
-            <div class = "select is-multiple" onclick="optionSelected()">
+            <div class = "select is-multiple">
             {{ form.size(class_="select is-multiple",size=3) }}
             </div>
         </div>
@@ -68,7 +96,7 @@
    <div class="field">
        <div class="control">
             {{ form.satMath.label(class_="label") }}
-            {{ form.satMath(class_="input is-info is-rounded", placeholder="200-800", style="width: 10%;", type="number", min="200", max="800", step="10", id="satMath") }}
+            {{ form.satMath(class_="input is-info is-rounded", placeholder="200-800", type="number", min="200", max="800", step="10", id="satMath") }}
         </div>
     </div>
 
@@ -76,7 +104,7 @@
     <div class="field" id="satEngField" style="display: none;">
         <div class="control">
             {{ form.satEng.label(class_="label") }}
-            {{ form.satEng(class_="input is-info is-rounded", placeholder="200-800", style="width: 10%;", type="number", min="200", max="800", step="10") }}
+            {{ form.satEng(class_="input is-info is-rounded", placeholder="200-800", type="number", min="200", max="800", step="10") }}
         </div>
     </div>
 
@@ -84,7 +112,7 @@
    <div class="field">
        <div class="control">
             {{ form.act.label(class_="label") }}
-            {{ form.act(class_="input is-info is-rounded",placeholder="1-36",style="width: 10%;") }}
+            {{ form.act(class_="input is-info is-rounded",placeholder="1-36") }}
         </div>
     </div>
 
@@ -92,7 +120,7 @@
      <div class="field">
         <div class ="control">
             {{ form.setting.label(class_="label") }}
-            <div class = "select is-multiple" onclick="optionSelected()">
+            <div class = "select is-multiple">
             {{ form.setting(class_="select is-multiple",size=3) }}
             </div>
         </div>
@@ -112,7 +140,7 @@
      <div class="field">
         <div class ="control">
             {{ form.region.label(class_="label") }}
-            <div class = "select is-multiple" onclick="optionSelected()">
+            <div class = "select is-multiple">
             {{ form.region(class_="select is-multiple",size=3) }}
             </div>
         </div>
@@ -132,7 +160,7 @@
      <div class="field">
         <div class ="control">
             {{ form.state.label(class_="label") }}
-            <div class = "select is-multiple" onclick="optionSelected()">
+            <div class = "select is-multiple">
             {{ form.state(class_="select is-multiple",size=3) }}
             </div>
         </div>
@@ -185,7 +213,18 @@
     
 
 	<script>
-        window.onload = optionSelected(); //show importance questions if answwer was selected
+        window.addEventListener('DOMContentLoaded', optionSelected);
+
+        // And add change listeners to each select for mobile tap support:
+        ['relAffil', 'size', 'setting', 'region', 'state'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', optionSelected);
+                el.addEventListener('touchend', function() {
+                    setTimeout(optionSelected, 50);  // slight delay for iOS to register selection
+                });
+            }
+        });
 
         function optionSelected(){
             "use strict";
