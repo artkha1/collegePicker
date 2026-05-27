@@ -247,10 +247,9 @@ def calc(rels, sizes, majors, settings, regions, states, specPrefs,
             }
         
         if regions:
-            user_codes = [r.code - 1 for r in regions]  # same -1 offset used in scoring
             c = row.get('region')
             info['region'] = {
-                'college_val': next((region_label[r.code] for r in regions if r.code - 1 == c), str(c)),
+                'college_val': region_label.get(int(c) + 1, str(c)),
                 'matches': [region_label[r.code] for r in regions if r.code - 1 == c],
                 'misses':  [region_label[r.code] for r in regions if r.code - 1 != c],
             }
@@ -287,7 +286,7 @@ def calc(rels, sizes, majors, settings, regions, states, specPrefs,
 
         return info
 
-    collegeInfo['match_info'] = collegeInfo.apply(build_match_info, axis=1)
+    collegeInfo['match_info'] = collegeInfo.apply(build_match_info, axis=1, result_type='reduce')
     
     # --- Formatting (display only, after all scoring) ---
     # Format columns
